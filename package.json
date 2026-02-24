@@ -1,0 +1,12 @@
+{
+  "name": "card-builder",
+  "private": true,
+  "scripts": {
+    "backend": "cd backend && python main.py",
+    "frontend": "cd frontend && npm run dev",
+    "start": "concurrently -k -n backend,frontend -c blue,magenta \"npm run backend\" \"npm run frontend\""
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

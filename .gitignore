@@ -1,0 +1,17 @@
+# Node / Vite (Frontend)
+node_modules/
+dist/
+.env
+.env.local
+
+# Python / FastAPI (Backend)
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+.env
+
+# OS Generated Files
+.DS_Store
+Thumbs.db

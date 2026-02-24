@@ -1,0 +1,83 @@
+/* ── STAKD Global Styles ─────────────────────────────────────────────────── */
+
+:root {
+  --font-display: 'Big Shoulders Display', 'Bebas Neue', system-ui, sans-serif;
+  --font-body: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --stakd-indigo: #2A2A69;
+  --stakd-indigo-lt: #6D81BB;
+  --stakd-charcoal: #181C1D;
+  --stakd-offwhite: #F3F1E4;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  overflow-x: hidden;
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.5;
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-synthesis: none;
+}
+
+/* Reset */
+h1, h2, h3, h4, h5, h6 { margin: 0; font-weight: inherit; }
+p { margin: 0; }
+a { text-decoration: inherit; color: inherit; }
+button { font-family: inherit; cursor: pointer; }
+input, select, textarea { font-family: inherit; }
+img { display: block; max-width: 100%; }
+
+/* Display font utility */
+.font-display {
+  font-family: var(--font-display);
+}
+
+/* Button interaction */
+@media (hover: hover) {
+  button:not(:disabled):hover {
+    filter: brightness(1.06);
+  }
+  button:not(:disabled):active {
+    transform: scale(0.98);
+  }
+}
+
+/* Focus visible outline */
+:focus-visible {
+  outline: 2px solid var(--stakd-indigo-lt);
+  outline-offset: 2px;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(109, 129, 187, 0.3); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(109, 129, 187, 0.5); }
+
+/* Smooth image loading */
+img {
+  image-rendering: auto;
+}
+
+/* Remove default number input arrows */
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
+
+/* Selection color */
+::selection {
+  background: rgba(42, 42, 105, 0.25);
+  color: inherit;
+}

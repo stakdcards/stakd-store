@@ -4,6 +4,7 @@ import { useDarkMode } from '../contexts/DarkModeContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useProductStore } from '../contexts/ProductStoreContext';
 import * as ordersService from '../services/orders';
+import * as productsService from '../services/products';
 
 const BRAND_INDIGO = '#2A2A69';
 const MOBILE_BP = 768;
@@ -70,7 +71,7 @@ function formatOrderDateCST(createdAt) {
 const Admin = () => {
     const { t } = useDarkMode();
     const { signOut } = useAuth();
-    const { products, setProductOverride, categories } = useProductStore();
+    const { products, setProductOverride, refetch: refetchProducts, categories } = useProductStore();
     const [activeTab, setActiveTab] = useState(() => {
         const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
         return params.get('tab') || 'dashboard';
@@ -82,6 +83,13 @@ const Admin = () => {
     const [editingProduct, setEditingProduct] = useState(null);
     const [editDraft, setEditDraft] = useState({});
     const [savingProduct, setSavingProduct] = useState(false);
+    const [deletingId, setDeletingId] = useState(null);
+    const [addingProduct, setAddingProduct] = useState(false);
+    const [newProductDraft, setNewProductDraft] = useState({
+        id: '', name: '', subtitle: '', franchise: '', category: 'video-games',
+        price: '', description: '', dimensions: '2.5" × 3.5"', materials: '',
+        bgColor: '', accentColor: '', palette: [], limited: false, inStock: true, featured: false, images: [],
+    });
     const imageInputRef = useRef(null);
 
     const fetchOrders = useCallback(async () => {
@@ -242,8 +250,15 @@ const Admin = () => {
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
                                 <div>
                                     <h3 style={st.sectionTitle}>Products & Availability</h3>
-                                    <p style={{ fontSize: 13, color: t.textMuted, margin: 0 }}>Click Edit to update a listing. Changes persist to this browser.</p>
+                                    <p style={{ fontSize: 13, color: t.textMuted, margin: 0 }}>Edit or delete listings. Changes are saved to the database.</p>
                                 </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setAddingProduct(true)}
+                                    style={{ padding: '8px 16px', borderRadius: 8, border: 'none', background: t.primary, color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}
+                                >
+                                    Add product
+                                </button>
                             </div>
                             <div style={{ overflowX: 'auto' }}>
                                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
@@ -291,29 +306,50 @@ const Admin = () => {
                                                     </div>
                                                 </td>
                                                 <td style={{ ...st.td, textAlign: 'right' }}>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => {
-                                                            setEditingProduct(p);
-                                                            setEditDraft({
-                                                                price: p.price,
-                                                                inStock: p.inStock,
-                                                                featured: p.featured,
-                                                                limited: p.limited,
-                                                                images: p.images || [],
-                                                            });
-                                                        }}
-                                                        style={{
-                                                            padding: '6px 16px', borderRadius: 8, fontSize: 13, fontWeight: 700,
-                                                            border: `1.5px solid ${t.primary}`,
-                                                            background: 'transparent', color: t.primary, cursor: 'pointer',
-                                                            transition: 'background .15s',
-                                                        }}
-                                                        onMouseEnter={e => { e.currentTarget.style.background = `${t.primary}15`; }}
-                                                        onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
-                                                    >
-                                                        Edit
-                                                    </button>
+                                                    <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setEditingProduct(p);
+                                                                setEditDraft({
+                                                                    price: p.price,
+                                                                    inStock: p.inStock,
+                                                                    featured: p.featured,
+                                                                    limited: p.limited,
+                                                                    images: p.images || [],
+                                                                });
+                                                            }}
+                                                            style={{
+                                                                padding: '6px 16px', borderRadius: 8, fontSize: 13, fontWeight: 700,
+                                                                border: `1.5px solid ${t.primary}`,
+                                                                background: 'transparent', color: t.primary, cursor: 'pointer',
+                                                                transition: 'background .15s',
+                                                            }}
+                                                            onMouseEnter={e => { e.currentTarget.style.background = `${t.primary}15`; }}
+                                                            onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; }}
+                                                        >
+                                                            Edit
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            disabled={deletingId === p.id}
+                                                            onClick={async () => {
+                                                                if (!window.confirm(`Delete "${p.name}"? This cannot be undone.`)) return;
+                                                                setDeletingId(p.id);
+                                                                try {
+                                                                    await productsService.deleteProduct(p.id);
+                                                                    await refetchProducts();
+                                                                } catch (err) {
+                                                                    alert(err?.message || 'Failed to delete product');
+                                                                } finally {
+                                                                    setDeletingId(null);
+                                                                }
+                                                            }}
+                                                            style={{ ...st.deleteBtn, padding: '6px 12px', width: 'auto', fontSize: 12 }}
+                                                        >
+                                                            {deletingId === p.id ? '…' : 'Delete'}
+                                                        </button>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         ))}
@@ -511,6 +547,78 @@ const Admin = () => {
 
                 </div>
             </div>
+
+            {/* ═══════ ADD PRODUCT MODAL ═══════ */}
+            {addingProduct && (
+                <div style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }} onClick={e => { if (e.target === e.currentTarget) setAddingProduct(false); }}>
+                    <div style={{ background: t.surface, borderRadius: 16, border: `1px solid ${t.border}`, boxShadow: '0 24px 80px rgba(0,0,0,0.35)', width: '100%', maxWidth: 480, maxHeight: '90vh', overflowY: 'auto', padding: 24 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
+                            <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: t.text }}>Add product</h3>
+                            <button type="button" onClick={() => setAddingProduct(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: t.textMuted, fontSize: 22, lineHeight: 1, padding: 4 }}>×</button>
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                            <div><label style={{ display: 'block', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: t.textMuted, marginBottom: 6 }}>ID (slug, e.g. vg-new)</label><input value={newProductDraft.id} onChange={e => setNewProductDraft(d => ({ ...d, id: e.target.value.replace(/\s/g, '-') }))} placeholder="vg-new" style={{ ...inp(), width: '100%' }} /></div>
+                            <div><label style={{ display: 'block', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: t.textMuted, marginBottom: 6 }}>Name *</label><input value={newProductDraft.name} onChange={e => setNewProductDraft(d => ({ ...d, name: e.target.value }))} placeholder="Product name" style={{ ...inp(), width: '100%' }} /></div>
+                            <div><label style={{ display: 'block', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: t.textMuted, marginBottom: 6 }}>Category *</label><select value={newProductDraft.category} onChange={e => setNewProductDraft(d => ({ ...d, category: e.target.value }))} style={{ ...inp(), width: '100%' }}><option value="video-games">Video Games</option><option value="anime">Anime</option><option value="esports">Esports</option></select></div>
+                            <div><label style={{ display: 'block', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: t.textMuted, marginBottom: 6 }}>Price *</label><input type="number" step="0.01" min="0" value={newProductDraft.price} onChange={e => setNewProductDraft(d => ({ ...d, price: e.target.value }))} placeholder="0.00" style={{ ...inp(), width: '100%' }} /></div>
+                            <div><label style={{ display: 'block', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: t.textMuted, marginBottom: 6 }}>Subtitle</label><input value={newProductDraft.subtitle} onChange={e => setNewProductDraft(d => ({ ...d, subtitle: e.target.value }))} placeholder="Optional" style={{ ...inp(), width: '100%' }} /></div>
+                            <div><label style={{ display: 'block', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: t.textMuted, marginBottom: 6 }}>Franchise</label><input value={newProductDraft.franchise} onChange={e => setNewProductDraft(d => ({ ...d, franchise: e.target.value }))} placeholder="e.g. Hollow Knight" style={{ ...inp(), width: '100%' }} /></div>
+                            <div><label style={{ display: 'block', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: t.textMuted, marginBottom: 6 }}>Description</label><textarea value={newProductDraft.description} onChange={e => setNewProductDraft(d => ({ ...d, description: e.target.value }))} placeholder="Optional" rows={3} style={{ ...inp(), width: '100%', resize: 'vertical' }} /></div>
+                            <div><label style={{ display: 'block', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: t.textMuted, marginBottom: 6 }}>Dimensions</label><input value={newProductDraft.dimensions} onChange={e => setNewProductDraft(d => ({ ...d, dimensions: e.target.value }))} placeholder='2.5" × 3.5"' style={{ ...inp(), width: '100%' }} /></div>
+                            <div><label style={{ display: 'block', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: t.textMuted, marginBottom: 6 }}>Materials</label><input value={newProductDraft.materials} onChange={e => setNewProductDraft(d => ({ ...d, materials: e.target.value }))} placeholder="Optional" style={{ ...inp(), width: '100%' }} /></div>
+                            <div><label style={{ display: 'block', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: t.textMuted, marginBottom: 6 }}>Bg color (hex)</label><input value={newProductDraft.bgColor} onChange={e => setNewProductDraft(d => ({ ...d, bgColor: e.target.value }))} placeholder="#0D1420" style={{ ...inp(), width: '100%' }} /></div>
+                            <div><label style={{ display: 'block', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: t.textMuted, marginBottom: 6 }}>Accent color (hex)</label><input value={newProductDraft.accentColor} onChange={e => setNewProductDraft(d => ({ ...d, accentColor: e.target.value }))} placeholder="#B8A878" style={{ ...inp(), width: '100%' }} /></div>
+                        </div>
+                        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 24, paddingTop: 16, borderTop: `1px solid ${t.border}` }}>
+                            <button type="button" onClick={() => setAddingProduct(false)} style={{ padding: '10px 20px', borderRadius: 8, border: `1px solid ${t.border}`, background: t.surfaceAlt, color: t.text, fontWeight: 600, fontSize: 14, cursor: 'pointer' }}>Cancel</button>
+                            <button
+                                type="button"
+                                disabled={savingProduct}
+                                onClick={async () => {
+                                    const id = (newProductDraft.id || '').trim();
+                                    const name = (newProductDraft.name || '').trim();
+                                    const price = parseFloat(newProductDraft.price);
+                                    if (!id || !name || Number.isNaN(price) || price < 0) {
+                                        alert('ID, name, and a valid price are required.');
+                                        return;
+                                    }
+                                    setSavingProduct(true);
+                                    try {
+                                        await productsService.createProduct({
+                                            id,
+                                            name,
+                                            subtitle: (newProductDraft.subtitle || '').trim() || undefined,
+                                            franchise: (newProductDraft.franchise || '').trim() || undefined,
+                                            category: newProductDraft.category,
+                                            price,
+                                            description: (newProductDraft.description || '').trim() || undefined,
+                                            dimensions: (newProductDraft.dimensions || '').trim() || undefined,
+                                            materials: (newProductDraft.materials || '').trim() || undefined,
+                                            bgColor: (newProductDraft.bgColor || '').trim() || undefined,
+                                            accentColor: (newProductDraft.accentColor || '').trim() || undefined,
+                                            palette: Array.isArray(newProductDraft.palette) ? newProductDraft.palette : [],
+                                            limited: newProductDraft.limited,
+                                            inStock: newProductDraft.inStock,
+                                            featured: newProductDraft.featured,
+                                            images: newProductDraft.images || [],
+                                        });
+                                        setAddingProduct(false);
+                                        setNewProductDraft({ id: '', name: '', subtitle: '', franchise: '', category: 'video-games', price: '', description: '', dimensions: '2.5" × 3.5"', materials: '', bgColor: '', accentColor: '', palette: [], limited: false, inStock: true, featured: false, images: [] });
+                                        await refetchProducts();
+                                    } catch (err) {
+                                        alert(err?.message || 'Failed to create product');
+                                    } finally {
+                                        setSavingProduct(false);
+                                    }
+                                }}
+                                style={{ padding: '10px 24px', borderRadius: 8, border: 'none', background: t.primary, color: '#fff', fontWeight: 700, fontSize: 14, cursor: savingProduct ? 'wait' : 'pointer' }}
+                            >
+                                {savingProduct ? 'Creating…' : 'Create product'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* ═══════ EDIT PRODUCT MODAL ═══════ */}
             {editingProduct && (
@@ -731,6 +839,7 @@ const Admin = () => {
                                             images: editDraft.images || [],
                                         });
                                         setEditingProduct(null);
+                                        await refetchProducts();
                                     } catch (e) {
                                         alert(e?.message || 'Failed to save product');
                                     } finally {

@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
 import { fetchProducts, updateProduct } from '../services/products';
-import { CATEGORIES } from '../data/products';
+import { CATEGORIES } from '../constants/categories';
 
 const ProductStoreContext = createContext();
 

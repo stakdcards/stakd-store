@@ -1,13 +1,5 @@
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL ?? '';
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY ?? '';
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn('Missing VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY. Set them in .env for Supabase.');
-}
-
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+import { supabase as _supabase } from './supabase.js';
+export const supabase = _supabase;
 
 // ─── Database types (match Supabase schema) ───────────────────────────────────
 

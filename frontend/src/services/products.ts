@@ -98,3 +98,47 @@ export async function upsertProduct(row: Partial<ProductRow> & { id: string }): 
   if (error) throw error;
   return rowToProduct(data as ProductRow);
 }
+
+/** Insert a new product (admin). */
+export async function createProduct(
+  product: Partial<Product> & {
+    id: string;
+    name: string;
+    category: 'video-games' | 'anime' | 'esports';
+    price: number;
+  }
+): Promise<Product> {
+  const payload: ProductRow = {
+    id: product.id,
+    name: product.name,
+    subtitle: product.subtitle ?? null,
+    franchise: product.franchise ?? null,
+    category: product.category,
+    price: product.price,
+    limited: product.limited ?? false,
+    in_stock: product.inStock ?? true,
+    featured: product.featured ?? false,
+    description: product.description ?? null,
+    dimensions: product.dimensions ?? null,
+    materials: product.materials ?? null,
+    bg_color: product.bgColor ?? null,
+    accent_color: product.accentColor ?? null,
+    palette: Array.isArray(product.palette) ? product.palette : [],
+    images: Array.isArray(product.images) ? product.images : [],
+    updated_at: new Date().toISOString(),
+  };
+  const { data, error } = await supabase
+    .from('products')
+    .insert(payload)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return rowToProduct(data as ProductRow);
+}
+
+/** Delete a product by id (admin). */
+export async function deleteProduct(id: string): Promise<void> {
+  const { error } = await supabase.from('products').delete().eq('id', id);
+  if (error) throw error;
+}

@@ -18,3 +18,5 @@ Thumbs.db
 
 # Cursor / MCP Secrets
 .cursor/
+.vercel
+.env*.local

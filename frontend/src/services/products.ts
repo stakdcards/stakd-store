@@ -18,7 +18,7 @@ export type Product = {
   bgColor?: string;
   accentColor?: string;
   palette?: string[];
-  images?: { id: string; dataUrl?: string; name?: string }[];
+  images?: { id: string; url?: string; dataUrl?: string; name?: string }[];
 };
 
 function rowToProduct(row: ProductRow): Product {

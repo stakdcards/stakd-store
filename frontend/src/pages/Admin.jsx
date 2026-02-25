@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useProductStore } from '../contexts/ProductStoreContext';
 import * as ordersService from '../services/orders';
 import * as productsService from '../services/products';
+import * as storageService from '../services/storage';
 
 const BRAND_INDIGO = '#2A2A69';
 const MOBILE_BP = 768;
@@ -91,6 +92,8 @@ const Admin = () => {
         bgColor: '', accentColor: '', palette: [], limited: false, inStock: true, featured: false, images: [],
     });
     const imageInputRef = useRef(null);
+    const addProductImageInputRef = useRef(null);
+    const [uploadingImage, setUploadingImage] = useState(false);
 
     const fetchOrders = useCallback(async () => {
         setOrdersLoading(true);
@@ -568,6 +571,35 @@ const Admin = () => {
                             <div><label style={{ display: 'block', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: t.textMuted, marginBottom: 6 }}>Materials</label><input value={newProductDraft.materials} onChange={e => setNewProductDraft(d => ({ ...d, materials: e.target.value }))} placeholder="Optional" style={{ ...inp(), width: '100%' }} /></div>
                             <div><label style={{ display: 'block', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: t.textMuted, marginBottom: 6 }}>Bg color (hex)</label><input value={newProductDraft.bgColor} onChange={e => setNewProductDraft(d => ({ ...d, bgColor: e.target.value }))} placeholder="#0D1420" style={{ ...inp(), width: '100%' }} /></div>
                             <div><label style={{ display: 'block', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: t.textMuted, marginBottom: 6 }}>Accent color (hex)</label><input value={newProductDraft.accentColor} onChange={e => setNewProductDraft(d => ({ ...d, accentColor: e.target.value }))} placeholder="#B8A878" style={{ ...inp(), width: '100%' }} /></div>
+                            <div>
+                                <div style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: t.textMuted, marginBottom: 8 }}>Product Photos</div>
+                                <input ref={addProductImageInputRef} type="file" accept="image/*" multiple style={{ display: 'none' }}
+                                    onChange={async (e) => {
+                                        const files = Array.from(e.target.files || []);
+                                        if (!files.length) return;
+                                        setUploadingImage(true);
+                                        try {
+                                            const productId = (newProductDraft.id || '').trim() || 'new';
+                                            for (const file of files) {
+                                                const img = await storageService.uploadProductImage(productId, file);
+                                                setNewProductDraft(d => ({ ...d, images: [...(d.images || []), { id: img.id, url: img.url, name: img.name }] }));
+                                            }
+                                        } catch (err) { alert(err?.message || 'Upload failed'); }
+                                        finally { setUploadingImage(false); e.target.value = ''; }
+                                    }}
+                                />
+                                <button type="button" disabled={uploadingImage} onClick={() => addProductImageInputRef.current?.click()}
+                                    style={{ padding: '8px 14px', borderRadius: 8, border: `1px dashed ${t.border}`, background: t.surfaceAlt, color: t.primary, fontWeight: 600, fontSize: 12, cursor: uploadingImage ? 'wait' : 'pointer', width: '100%' }}>
+                                    {uploadingImage ? 'Uploading…' : 'Upload Photos'}
+                                </button>
+                                {(newProductDraft.images || []).length > 0 && (
+                                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+                                        {(newProductDraft.images || []).map((img) => (
+                                            <img key={img.id} src={img.url || img.dataUrl} alt={img.name} style={{ width: 40, height: 40, objectFit: 'cover', borderRadius: 6, border: `1px solid ${t.border}` }} />
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
                         </div>
                         <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 24, paddingTop: 16, borderTop: `1px solid ${t.border}` }}>
                             <button type="button" onClick={() => setAddingProduct(false)} style={{ padding: '10px 20px', borderRadius: 8, border: `1px solid ${t.border}`, background: t.surfaceAlt, color: t.text, fontWeight: 600, fontSize: 14, cursor: 'pointer' }}>Cancel</button>
@@ -723,50 +755,51 @@ const Admin = () => {
                                 Upload photos for this listing. Use the arrows to reorder — the first photo is shown as the primary image.
                             </p>
 
-                            {/* Upload button */}
+                            {/* Upload button — uploads to Supabase Storage, stores public URL in images */}
                             <input
                                 ref={imageInputRef}
                                 type="file"
                                 accept="image/*"
                                 multiple
                                 style={{ display: 'none' }}
-                                onChange={e => {
+                                onChange={async (e) => {
                                     const files = Array.from(e.target.files || []);
                                     if (!files.length) return;
-                                    files.forEach(file => {
-                                        const reader = new FileReader();
-                                        reader.onload = ev => {
-                                            const dataUrl = ev.target.result;
-                                            setEditDraft(d => ({
-                                                ...d,
-                                                images: [...(d.images || []), { id: `img-${Date.now()}-${Math.random().toString(36).slice(2)}`, dataUrl, name: file.name }],
-                                            }));
-                                        };
-                                        reader.readAsDataURL(file);
-                                    });
-                                    e.target.value = '';
+                                    setUploadingImage(true);
+                                    try {
+                                        for (const file of files) {
+                                            const img = await storageService.uploadProductImage(editingProduct.id, file);
+                                            setEditDraft(d => ({ ...d, images: [...(d.images || []), { id: img.id, url: img.url, name: img.name }] }));
+                                        }
+                                    } catch (err) {
+                                        alert(err?.message || 'Upload failed');
+                                    } finally {
+                                        setUploadingImage(false);
+                                        e.target.value = '';
+                                    }
                                 }}
                             />
                             <button
                                 type="button"
+                                disabled={uploadingImage}
                                 onClick={() => imageInputRef.current?.click()}
                                 style={{
                                     display: 'flex', alignItems: 'center', gap: 8,
                                     padding: '9px 18px', borderRadius: 8,
                                     border: `1.5px dashed ${t.border}`,
                                     background: t.surfaceAlt, color: t.primary,
-                                    fontWeight: 700, fontSize: 13, cursor: 'pointer',
+                                    fontWeight: 700, fontSize: 13, cursor: uploadingImage ? 'wait' : 'pointer',
                                     width: '100%', justifyContent: 'center', marginBottom: 14,
                                     transition: 'border-color .15s',
                                 }}
-                                onMouseEnter={e => e.currentTarget.style.borderColor = t.primary}
+                                onMouseEnter={e => !uploadingImage && (e.currentTarget.style.borderColor = t.primary)}
                                 onMouseLeave={e => e.currentTarget.style.borderColor = t.border}
                             >
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                                Upload Photos
+                                {uploadingImage ? 'Uploading…' : 'Upload Photos'}
                             </button>
 
-                            {/* Image list */}
+                            {/* Image list — display url (Supabase) or dataUrl (legacy) */}
                             {(editDraft.images || []).length > 0 ? (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                                     {(editDraft.images || []).map((img, idx) => (
@@ -776,7 +809,7 @@ const Admin = () => {
                                             border: `1px solid ${t.border}`, background: t.bg,
                                         }}>
                                             <img
-                                                src={img.dataUrl}
+                                                src={img.url || img.dataUrl}
                                                 alt={img.name}
                                                 style={{ width: 50, height: 50, objectFit: 'cover', borderRadius: 6, flexShrink: 0, border: `1px solid ${t.border}` }}
                                             />
@@ -831,12 +864,13 @@ const Admin = () => {
                                 onClick={async () => {
                                     setSavingProduct(true);
                                     try {
+                                        const imagesToSave = (editDraft.images || []).map(({ id, url, name }) => ({ id, url: url || undefined, name }));
                                         await setProductOverride(editingProduct.id, {
                                             price: parseFloat(editDraft.price) || 0,
                                             inStock: editDraft.inStock,
                                             featured: editDraft.featured,
                                             limited: editDraft.limited,
-                                            images: editDraft.images || [],
+                                            images: imagesToSave,
                                         });
                                         setEditingProduct(null);
                                         await refetchProducts();

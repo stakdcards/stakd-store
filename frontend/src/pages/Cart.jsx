@@ -5,7 +5,6 @@ import Footer from '../components/Footer';
 import { ShadowboxPreview } from '../components/ShadowboxPreview';
 import { useDarkMode } from '../contexts/DarkModeContext';
 import { useCart } from '../contexts/CartContext';
-import { createOrder } from '../services/orders';
 
 const SHIPPING_OPTIONS = [
     { id: 'standard', label: 'Standard Shipping (5–8 business days)', price: 0 },
@@ -99,6 +98,7 @@ const Cart = () => {
     });
     const [errors, setErrors] = useState({});
     const [submitting, setSubmitting] = useState(false);
+    const [stripeRedirecting, setStripeRedirecting] = useState(false);
 
     const selectedShipping = SHIPPING_OPTIONS.find(s => s.id === shipping);
     const shippingCost = selectedShipping?.price ?? 0;
@@ -107,57 +107,32 @@ const Cart = () => {
 
     const handleInput = (field, val) => setForm(f => ({ ...f, [field]: val }));
 
-    const validate = () => {
-        const e = {};
-        if (!form.firstName.trim()) e.firstName = 'Required';
-        if (!form.lastName.trim()) e.lastName = 'Required';
-        if (!form.email.includes('@')) e.email = 'Valid email required';
-        if (!form.address.trim()) e.address = 'Required';
-        if (!form.city.trim()) e.city = 'Required';
-        if (!form.state) e.state = 'Required';
-        if (form.zip.length < 5) e.zip = 'Valid zip required';
-        if (form.cardNumber.replace(/\s/g, '').length < 16) e.cardNumber = 'Valid card number required';
-        if (!form.cardExpiry.includes('/')) e.cardExpiry = 'MM/YY format';
-        if (form.cardCvc.length < 3) e.cardCvc = 'Required';
-        if (!form.cardName.trim()) e.cardName = 'Name on card required';
-        setErrors(e);
-        return Object.keys(e).length === 0;
-    };
-
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        if (!validate()) return;
-        setSubmitting(true);
+    const handleStripeCheckout = async () => {
+        setStripeRedirecting(true);
         try {
-            const orderPayload = {
-                first_name: form.firstName.trim(),
-                last_name: form.lastName.trim(),
-                email: form.email.trim(),
-                phone: form.phone.trim() || null,
-                address: form.address.trim(),
-                city: form.city.trim(),
-                state: form.state.trim(),
-                zip: form.zip.trim(),
-                country: form.country.trim() || 'US',
-                shipping_method: selectedShipping?.id ?? 'standard',
-                shipping_cost: shippingCost,
-                subtotal: cartSubtotal,
-                tax,
-                total,
-            };
             const items = cartItems.map(({ product, quantity }) => ({
-                product_id: product.id,
+                name: product.name,
+                price: product.price,
                 quantity,
-                price_at_time: product.price,
+                image_url: (product.images && product.images[0] && product.images[0].url) ? product.images[0].url : undefined,
             }));
-            await createOrder(orderPayload, items);
-            clearCart();
-            setStep('confirmed');
+            const res = await fetch('/api/create-checkout-session', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ items, successUrlBase: window.location.origin }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Checkout session failed');
+            if (data.url) {
+                window.location.href = data.url;
+                return;
+            }
+            throw new Error('No checkout URL returned');
         } catch (err) {
             console.error(err);
-            alert(err?.message || 'Order submission failed. Please try again.');
+            alert(err?.message || 'Could not start checkout. Try again.');
         } finally {
-            setSubmitting(false);
+            setStripeRedirecting(false);
         }
     };
 
@@ -282,138 +257,14 @@ const Cart = () => {
                                 {cartItems.map(item => <CartItem key={item.product.id} item={item} />)}
                             </div>
                         ) : (
-                            <form onSubmit={handleSubmit}>
-                                <div style={{ background: t.surface, borderRadius: 14, border: `1px solid ${t.border}`, padding: isMobile ? '16px' : '24px', marginBottom: isMobile ? 12 : 20 }}>
-                                    <h3 style={{ margin: isMobile ? '0 0 14px' : '0 0 20px', fontSize: isMobile ? 14 : 16, fontWeight: 800, color: t.text, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                                        Shipping Information
-                                    </h3>
-                                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: isMobile ? 10 : 14 }}>
-                                        <div>
-                                            <label style={{ fontSize: 11, fontWeight: 700, color: t.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 6 }}>First Name</label>
-                                            <input value={form.firstName} onChange={e => handleInput('firstName', e.target.value)} style={inp('firstName')} />
-                                            {errors.firstName && <div style={{ fontSize: 11, color: '#ef4444', marginTop: 4 }}>{errors.firstName}</div>}
-                                        </div>
-                                        <div>
-                                            <label style={{ fontSize: 11, fontWeight: 700, color: t.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 6 }}>Last Name</label>
-                                            <input value={form.lastName} onChange={e => handleInput('lastName', e.target.value)} style={inp('lastName')} />
-                                            {errors.lastName && <div style={{ fontSize: 11, color: '#ef4444', marginTop: 4 }}>{errors.lastName}</div>}
-                                        </div>
-                                        <div>
-                                            <label style={{ fontSize: 11, fontWeight: 700, color: t.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 6 }}>Email</label>
-                                            <input type="email" value={form.email} onChange={e => handleInput('email', e.target.value)} style={inp('email')} />
-                                            {errors.email && <div style={{ fontSize: 11, color: '#ef4444', marginTop: 4 }}>{errors.email}</div>}
-                                        </div>
-                                        <div>
-                                            <label style={{ fontSize: 11, fontWeight: 700, color: t.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 6 }}>Phone</label>
-                                            <input value={form.phone} onChange={e => handleInput('phone', e.target.value)} style={inp('phone')} placeholder="Optional" />
-                                        </div>
-                                        <div style={{ gridColumn: isMobile ? '1' : 'span 2' }}>
-                                            <label style={{ fontSize: 11, fontWeight: 700, color: t.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 6 }}>Street Address</label>
-                                            <input value={form.address} onChange={e => handleInput('address', e.target.value)} style={inp('address')} />
-                                            {errors.address && <div style={{ fontSize: 11, color: '#ef4444', marginTop: 4 }}>{errors.address}</div>}
-                                        </div>
-                                        <div>
-                                            <label style={{ fontSize: 11, fontWeight: 700, color: t.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 6 }}>City</label>
-                                            <input value={form.city} onChange={e => handleInput('city', e.target.value)} style={inp('city')} />
-                                            {errors.city && <div style={{ fontSize: 11, color: '#ef4444', marginTop: 4 }}>{errors.city}</div>}
-                                        </div>
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-                                            <div>
-                                                <label style={{ fontSize: 11, fontWeight: 700, color: t.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 6 }}>State</label>
-                                                <select value={form.state} onChange={e => handleInput('state', e.target.value)} style={{ ...inp('state'), cursor: 'pointer' }}>
-                                                    <option value="">—</option>
-                                                    {STATES.map(s => <option key={s}>{s}</option>)}
-                                                </select>
-                                                {errors.state && <div style={{ fontSize: 11, color: '#ef4444', marginTop: 4 }}>{errors.state}</div>}
-                                            </div>
-                                            <div>
-                                                <label style={{ fontSize: 11, fontWeight: 700, color: t.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 6 }}>Zip Code</label>
-                                                <input value={form.zip} onChange={e => handleInput('zip', e.target.value)} maxLength={5} style={inp('zip')} />
-                                                {errors.zip && <div style={{ fontSize: 11, color: '#ef4444', marginTop: 4 }}>{errors.zip}</div>}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {/* Shipping options */}
-                                <div style={{ background: t.surface, borderRadius: 14, border: `1px solid ${t.border}`, padding: isMobile ? '16px' : 24, marginBottom: isMobile ? 12 : 20 }}>
-                                    <h3 style={{ margin: isMobile ? '0 0 12px' : '0 0 16px', fontSize: isMobile ? 14 : 16, fontWeight: 800, color: t.text, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                                        Shipping Method
-                                    </h3>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                                        {SHIPPING_OPTIONS.map(opt => (
-                                            <label key={opt.id} style={{
-                                                display: 'flex', alignItems: 'center', gap: 12,
-                                                padding: 14, borderRadius: 10,
-                                                border: `1.5px solid ${shipping === opt.id ? t.primary : t.border}`,
-                                                background: shipping === opt.id ? t.tagBg : 'transparent',
-                                                cursor: 'pointer', transition: 'all .15s',
-                                            }}>
-                                                <input type="radio" name="shipping" value={opt.id} checked={shipping === opt.id} onChange={() => setShipping(opt.id)} style={{ accentColor: t.primary }} />
-                                                <div style={{ flex: 1 }}>
-                                                    <div style={{ fontSize: 13, fontWeight: 700, color: t.text }}>{opt.label}</div>
-                                                </div>
-                                                <div style={{ fontSize: 14, fontWeight: 800, color: t.primary }}>${opt.price.toFixed(2)}</div>
-                                            </label>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                {/* Payment */}
-                                <div style={{ background: t.surface, borderRadius: 14, border: `1px solid ${t.border}`, padding: isMobile ? '16px' : 24 }}>
-                                    <h3 style={{ margin: isMobile ? '0 0 14px' : '0 0 20px', fontSize: isMobile ? 14 : 16, fontWeight: 800, color: t.text, textTransform: 'uppercase', letterSpacing: 0.5 }}>
-                                        Payment
-                                    </h3>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-                                        <div>
-                                            <label style={{ fontSize: 11, fontWeight: 700, color: t.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 6 }}>Card Number</label>
-                                            <input
-                                                value={form.cardNumber}
-                                                onChange={e => handleInput('cardNumber', e.target.value.replace(/\D/g, '').replace(/(.{4})/g, '$1 ').trim())}
-                                                maxLength={19} placeholder="1234 5678 9012 3456"
-                                                style={inp('cardNumber')}
-                                            />
-                                            {errors.cardNumber && <div style={{ fontSize: 11, color: '#ef4444', marginTop: 4 }}>{errors.cardNumber}</div>}
-                                        </div>
-                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
-                                            <div>
-                                                <label style={{ fontSize: 11, fontWeight: 700, color: t.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 6 }}>Expiry</label>
-                                                <input
-                                                    value={form.cardExpiry}
-                                                    onChange={e => {
-                                                        let v = e.target.value.replace(/\D/g, '');
-                                                        if (v.length >= 2) v = v.slice(0, 2) + '/' + v.slice(2, 4);
-                                                        handleInput('cardExpiry', v);
-                                                    }}
-                                                    maxLength={5} placeholder="MM/YY"
-                                                    style={inp('cardExpiry')}
-                                                />
-                                                {errors.cardExpiry && <div style={{ fontSize: 11, color: '#ef4444', marginTop: 4 }}>{errors.cardExpiry}</div>}
-                                            </div>
-                                            <div>
-                                                <label style={{ fontSize: 11, fontWeight: 700, color: t.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 6 }}>CVC</label>
-                                                <input
-                                                    value={form.cardCvc}
-                                                    onChange={e => handleInput('cardCvc', e.target.value.replace(/\D/g, '').slice(0, 4))}
-                                                    placeholder="123"
-                                                    style={inp('cardCvc')}
-                                                />
-                                                {errors.cardCvc && <div style={{ fontSize: 11, color: '#ef4444', marginTop: 4 }}>{errors.cardCvc}</div>}
-                                            </div>
-                                            <div>
-                                                <label style={{ fontSize: 11, fontWeight: 700, color: t.textMuted, textTransform: 'uppercase', letterSpacing: 0.5, display: 'block', marginBottom: 6 }}>Name on Card</label>
-                                                <input
-                                                    value={form.cardName}
-                                                    onChange={e => handleInput('cardName', e.target.value)}
-                                                    placeholder="J. Smith"
-                                                    style={inp('cardName')}
-                                                />
-                                                {errors.cardName && <div style={{ fontSize: 11, color: '#ef4444', marginTop: 4 }}>{errors.cardName}</div>}
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </form>
+                            <div style={{ background: t.surface, borderRadius: 14, border: `1px solid ${t.border}`, padding: isMobile ? 20 : 28 }}>
+                                <h3 style={{ margin: '0 0 12px', fontSize: 16, fontWeight: 800, color: t.text, textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                                    Secure payment with Stripe
+                                </h3>
+                                <p style={{ margin: 0, fontSize: 14, color: t.textMuted, lineHeight: 1.6 }}>
+                                    You'll enter payment and shipping details on Stripe's secure checkout page. After payment, you'll be redirected back here.
+                                </p>
+                            </div>
                         )}
                     </div>
 
@@ -477,20 +328,20 @@ const Cart = () => {
                                 </button>
                             ) : (
                                 <button
-                                    type="submit"
-                                    disabled={submitting}
-                                    onClick={handleSubmit}
+                                    type="button"
+                                    disabled={stripeRedirecting}
+                                    onClick={handleStripeCheckout}
                                     style={{
                                         width: '100%', marginTop: 20, padding: '14px 0', borderRadius: 10,
                                         border: 'none',
-                                        background: submitting ? t.surfaceAlt : t.primary,
-                                        color: submitting ? t.textMuted : '#fff',
+                                        background: stripeRedirecting ? t.surfaceAlt : t.primary,
+                                        color: stripeRedirecting ? t.textMuted : '#fff',
                                         fontWeight: 800, fontSize: 15,
-                                        cursor: submitting ? 'wait' : 'pointer',
+                                        cursor: stripeRedirecting ? 'wait' : 'pointer',
                                         letterSpacing: 0.5,
                                     }}
                                 >
-                                    {submitting ? 'Processing…' : 'Place Order'}
+                                    {stripeRedirecting ? 'Redirecting to Stripe…' : 'Pay with Stripe'}
                                 </button>
                             )}
 

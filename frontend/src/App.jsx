@@ -8,6 +8,7 @@ import Landing from './pages/Landing';
 import Products from './pages/Products';
 import Gallery from './pages/Gallery';
 import Cart from './pages/Cart';
+import CheckoutSuccess from './pages/CheckoutSuccess';
 import About from './pages/About';
 import Admin from './pages/Admin';
 
@@ -23,6 +24,7 @@ function App() {
                             <Route path="/products" element={<Products />} />
                             <Route path="/gallery"  element={<Gallery />} />
                             <Route path="/cart"     element={<Cart />} />
+                            <Route path="/checkout/success" element={<CheckoutSuccess />} />
                             <Route path="/about"    element={<About />} />
                             <Route path="/admin"    element={<AdminRoute><Admin /></AdminRoute>} />
                         {/* Legacy redirects */}

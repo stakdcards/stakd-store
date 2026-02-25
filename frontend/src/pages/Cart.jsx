@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import SiteHeader from '../components/SiteHeader';
 import Footer from '../components/Footer';
 import { ShadowboxPreview } from '../components/ShadowboxPreview';
 import { useDarkMode } from '../contexts/DarkModeContext';
 import { useCart } from '../contexts/CartContext';
+import { createOrder } from '../services/orders';
 
 const SHIPPING_OPTIONS = [
     { id: 'standard', label: 'Standard Shipping (5–8 business days)', price: 0 },
@@ -80,9 +81,8 @@ function CartItem({ item }) {
 }
 
 const Cart = () => {
-    const { t, darkMode } = useDarkMode();
+    const { t } = useDarkMode();
     const { cartItems, cartSubtotal, clearCart } = useCart();
-    const navigate = useNavigate();
     const [shipping, setShipping] = useState('standard');
     const [step, setStep] = useState('cart'); // cart | checkout | confirmed
     const [isMobile, setIsMobile] = useState(window.innerWidth < 700);
@@ -128,10 +128,37 @@ const Cart = () => {
         e.preventDefault();
         if (!validate()) return;
         setSubmitting(true);
-        await new Promise(r => setTimeout(r, 1600));
-        setSubmitting(false);
-        setStep('confirmed');
-        clearCart();
+        try {
+            const orderPayload = {
+                first_name: form.firstName.trim(),
+                last_name: form.lastName.trim(),
+                email: form.email.trim(),
+                phone: form.phone.trim() || null,
+                address: form.address.trim(),
+                city: form.city.trim(),
+                state: form.state.trim(),
+                zip: form.zip.trim(),
+                country: form.country.trim() || 'US',
+                shipping_method: selectedShipping?.id ?? 'standard',
+                shipping_cost: shippingCost,
+                subtotal: cartSubtotal,
+                tax,
+                total,
+            };
+            const items = cartItems.map(({ product, quantity }) => ({
+                product_id: product.id,
+                quantity,
+                price_at_time: product.price,
+            }));
+            await createOrder(orderPayload, items);
+            clearCart();
+            setStep('confirmed');
+        } catch (err) {
+            console.error(err);
+            alert(err?.message || 'Order submission failed. Please try again.');
+        } finally {
+            setSubmitting(false);
+        }
     };
 
     const inp = (field, extra = {}) => ({

@@ -1,50 +1,52 @@
-import React, { createContext, useContext, useState, useCallback, useMemo } from 'react';
-import { PRODUCTS as BASE_PRODUCTS, CATEGORIES } from '../data/products';
-
-const STORAGE_KEY = 'stakd-product-overrides';
-
-function loadOverrides() {
-    try {
-        const s = localStorage.getItem(STORAGE_KEY);
-        return s ? JSON.parse(s) : {};
-    } catch {
-        return {};
-    }
-}
-
-function saveOverrides(obj) {
-    try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(obj));
-    } catch {}
-}
-
-function mergeProduct(base, overrides) {
-    if (!overrides || Object.keys(overrides).length === 0) return base;
-    return { ...base, ...overrides };
-}
+import React, { createContext, useContext, useState, useCallback, useMemo, useEffect } from 'react';
+import { fetchProducts, updateProduct } from '../services/products';
+import { CATEGORIES } from '../data/products';
 
 const ProductStoreContext = createContext();
 
 export const ProductStoreProvider = ({ children }) => {
-    const [overrides, setOverrides] = useState(loadOverrides);
+    const [products, setProducts] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
 
-    const products = useMemo(() => {
-        return BASE_PRODUCTS.map(p => mergeProduct(p, overrides[p.id]));
-    }, [overrides]);
-
-    const setProductOverride = useCallback((id, patch) => {
-        setOverrides(prev => {
-            const next = { ...prev, [id]: { ...(prev[id] || {}), ...patch } };
-            saveOverrides(next);
-            return next;
-        });
+    const refetch = useCallback(async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            const list = await fetchProducts();
+            setProducts(list);
+        } catch (e) {
+            setError(e?.message || 'Failed to load products');
+            setProducts([]);
+        } finally {
+            setLoading(false);
+        }
     }, []);
 
+    useEffect(() => {
+        refetch();
+    }, [refetch]);
+
+    const setProductOverride = useCallback(async (id, patch) => {
+        const numericPatch = {
+            price: patch.price != null ? Number(patch.price) : undefined,
+            in_stock: patch.inStock,
+            featured: patch.featured,
+            limited: patch.limited,
+            images: patch.images,
+        };
+        const filtered = Object.fromEntries(Object.entries(numericPatch).filter(([, v]) => v !== undefined));
+        if (patch.inStock !== undefined) filtered.in_stock = patch.inStock;
+        if (patch.featured !== undefined) filtered.featured = patch.featured;
+        if (patch.limited !== undefined) filtered.limited = patch.limited;
+        if (patch.images !== undefined) filtered.images = patch.images;
+        await updateProduct(id, filtered);
+        await refetch();
+    }, [refetch]);
+
     const getProduct = useCallback((id) => {
-        const base = BASE_PRODUCTS.find(p => p.id === id);
-        if (!base) return null;
-        return mergeProduct(base, overrides[id]);
-    }, [overrides]);
+        return products.find(p => p.id === id) || null;
+    }, [products]);
 
     const getProductsByCategory = useCallback((categoryId) => {
         if (categoryId === 'all') return products;
@@ -56,11 +58,14 @@ export const ProductStoreProvider = ({ children }) => {
     const value = useMemo(() => ({
         products,
         featured,
+        loading,
+        error,
         getProduct,
         getProductsByCategory,
         setProductOverride,
+        refetch,
         categories: CATEGORIES,
-    }), [products, featured, getProduct, getProductsByCategory, setProductOverride]);
+    }), [products, featured, loading, error, getProduct, getProductsByCategory, setProductOverride, refetch]);
 
     return (
         <ProductStoreContext.Provider value={value}>

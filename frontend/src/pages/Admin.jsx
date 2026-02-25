@@ -1,13 +1,12 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { NavLink } from 'react-router-dom';
 import SiteHeader from '../components/SiteHeader';
 import { useDarkMode } from '../contexts/DarkModeContext';
+import { useAuth } from '../contexts/AuthContext';
 import { useProductStore } from '../contexts/ProductStoreContext';
+import * as ordersService from '../services/orders';
 
 const BRAND_INDIGO = '#2A2A69';
 const MOBILE_BP = 768;
-const API_BASE_URL = 'http://localhost:8000';
-const ADMIN_KEY_STORAGE = 'stakd-admin-api-key';
 
 const TABS = [
     { id: 'dashboard', label: 'Dashboard' },
@@ -69,7 +68,8 @@ function formatOrderDateCST(createdAt) {
 }
 
 const Admin = () => {
-    const { darkMode, t } = useDarkMode();
+    const { t } = useDarkMode();
+    const { signOut } = useAuth();
     const { products, setProductOverride, categories } = useProductStore();
     const [activeTab, setActiveTab] = useState(() => {
         const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
@@ -79,52 +79,41 @@ const Admin = () => {
     const [ordersLoading, setOrdersLoading] = useState(false);
     const [orderFilter, setOrderFilter] = useState('all');
     const [selectedOrderId, setSelectedOrderId] = useState(null);
-    const [adminApiKey, setAdminApiKey] = useState(() => (typeof window !== 'undefined' ? sessionStorage.getItem(ADMIN_KEY_STORAGE) || '' : ''));
-    const [adminApiKeyInput, setAdminApiKeyInput] = useState('');
-    const [editingProduct, setEditingProduct] = useState(null); // product being edited
-    const [editDraft, setEditDraft] = useState({});             // draft values in edit modal
+    const [editingProduct, setEditingProduct] = useState(null);
+    const [editDraft, setEditDraft] = useState({});
+    const [savingProduct, setSavingProduct] = useState(false);
     const imageInputRef = useRef(null);
-
-    const getTestOrderFull = useCallback((orderId) => {
-        try {
-            const saved = JSON.parse(localStorage.getItem('snapshot-test-orders') || '[]');
-            return saved.find((o) => o.order_id === orderId) || null;
-        } catch (_) {
-            return null;
-        }
-    }, []);
 
     const fetchOrders = useCallback(async () => {
         setOrdersLoading(true);
         try {
-            const res = await fetch(`${API_BASE_URL}/api/orders`);
-            const data = res.ok ? await res.json() : {};
-            const apiOrders = (data.orders || []).map((o) => ({
-                ...o,
-                isTest: true,
-                status: normalizeOrderStatus(o.status),
-            }));
-            const fromApiIds = new Set(apiOrders.map((o) => o.id));
-            const saved = JSON.parse(localStorage.getItem('snapshot-test-orders') || '[]');
-            const localTestOrders = saved
-                .filter((t) => !fromApiIds.has(t.order_id))
-                .map((t) => {
-                    const boxes = (t.items || []).reduce((s, i) => s + (i.quantity || 1), 0);
-                    const cards = (t.items || []).reduce((s, box) => s + (box.card_count ?? (box.cards || []).reduce((s2, c) => s2 + (c.quantity || 1), 0)), 0);
-                    return {
-                        id: t.order_id,
-                        customer: 'Test order',
-                        email: '—',
-                        boxes,
-                        cards,
-                        total: (t.total_cents || 0) / 100,
-                        status: normalizeOrderStatus(t.status || 'pending'),
-                        date: t.created_at ? t.created_at.slice(0, 10) : new Date().toISOString().slice(0, 10),
-                        isTest: true,
-                    };
-                });
-            setOrders([...apiOrders, ...localTestOrders]);
-        } catch (_) {
+            const list = await ordersService.fetchOrders();
+            const mapped = list.map((o) => {
+                const items = o.order_items || [];
+                const cards = items.reduce((s, i) => s + (i.quantity || 0), 0);
+                return {
+                    id: o.id,
+                    customer: `${o.first_name || ''} ${o.last_name || ''}`.trim() || '—',
+                    email: o.email,
+                    first_name: o.first_name,
+                    last_name: o.last_name,
+                    address: o.address,
+                    city: o.city,
+                    state: o.state,
+                    zip: o.zip,
+                    country: o.country,
+                    boxes: items.length,
+                    cards,
+                    total: Number(o.total),
+                    status: normalizeOrderStatus(o.status),
+                    created_at: o.created_at,
+                    order_items: items,
+                };
+            });
+            setOrders(mapped);
+        } catch (e) {
+            console.error(e);
+            setOrders([]);
         } finally {
             setOrdersLoading(false);
         }
@@ -134,26 +123,6 @@ const Admin = () => {
         fetchOrders();
     }, [fetchOrders]);
 
-    const [deletingTestOrders, setDeletingTestOrders] = useState(false);
-    const removeAllTestOrders = useCallback(async () => {
-        if (!window.confirm('Remove all test orders from the database and local history? This cannot be undone.')) return;
-        setDeletingTestOrders(true);
-        try {
-            const res = await fetch(`${API_BASE_URL}/api/test-orders`, { method: 'DELETE' });
-            if (res.ok) {
-                localStorage.removeItem('snapshot-test-orders');
-                await fetchOrders();
-                setSelectedOrderId(null);
-            } else {
-                const data = await res.json().catch(() => ({}));
-                alert(data?.detail || data?.message || 'Failed to delete test orders');
-            }
-        } catch (e) {
-            alert('Failed to delete test orders: ' + (e?.message || e));
-        } finally {
-            setDeletingTestOrders(false);
-        }
-    }, [fetchOrders]);
     const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' && window.innerWidth < MOBILE_BP);
 
     useEffect(() => {
@@ -162,7 +131,6 @@ const Admin = () => {
         return () => window.removeEventListener('resize', onResize);
     }, []);
 
-    /* ────── Orders helpers ────── */
     const updateOrderStatus = useCallback(async (id, nextStatus) => {
         const normalized = normalizeOrderStatus(nextStatus);
         const before = orders.find((o) => o.id === id)?.status;
@@ -173,12 +141,7 @@ const Admin = () => {
             return { ...o, status: normalized };
         }));
         try {
-            const res = await fetch(`${API_BASE_URL}/api/orders/${encodeURIComponent(id)}/status`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ status: normalized }),
-            });
-            if (!res.ok) throw new Error('Status update failed');
+            await ordersService.updateOrderStatus(id, normalized);
         } catch (_) {
             if (before) {
                 setOrders(prev => prev.map((o) => (o.id === id ? { ...o, status: before } : o)));
@@ -204,61 +167,12 @@ const Admin = () => {
         revenue: orders.reduce((s, o) => s + (o.total ?? 0), 0),
     };
 
-    const saveAdminApiKey = useCallback((e) => {
-        e.preventDefault();
-        const value = adminApiKeyInput.trim();
-        if (!value) return;
-        setAdminApiKey(value);
-        setAdminApiKeyInput('');
-        try {
-            sessionStorage.setItem(ADMIN_KEY_STORAGE, value);
-        } catch (_) {}
-    }, [adminApiKeyInput]);
-
-    const clearAdminApiKey = useCallback(() => {
-        setAdminApiKey('');
-        try {
-            sessionStorage.removeItem(ADMIN_KEY_STORAGE);
-        } catch (_) {}
-    }, []);
-
     const selectedOrder = selectedOrderId ? orders.find(o => o.id === selectedOrderId) : null;
-    const selectedOrderFull = selectedOrderId ? getTestOrderFull(selectedOrderId) : null;
 
     /* ────── Shared style helpers ────── */
     const pad = isMobile ? 10 : 24;
     const sec = { ...st.section, padding: pad, background: t.surface, borderColor: t.border };
-    const inp = (extra = {}) => ({ ...st.input, background: darkMode ? '#27272a' : '#f5f5f5', borderColor: t.border, color: t.text, minWidth: 0, ...extra });
-
-    if (!adminApiKey) {
-        return (
-            <div style={{ ...st.container, background: t.bg, color: t.text }}>
-                <SiteHeader />
-                <div style={{ padding: isMobile ? '20px 10px' : '32px 40px', maxWidth: 760, margin: '0 auto' }}>
-                    <div style={{ ...st.section, background: t.surface, borderColor: t.border }}>
-                        <h1 style={{ fontSize: isMobile ? 24 : 32, margin: 0 }}>Admin Access</h1>
-                        <p style={{ marginTop: 10, color: t.textMuted, fontSize: 14 }}>
-                            Enter your local admin API key to unlock production tools and cut-file generation.
-                        </p>
-                        <form onSubmit={saveAdminApiKey} style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', gap: 10, marginTop: 14 }}>
-                            <input
-                                type="password"
-                                value={adminApiKeyInput}
-                                onChange={(e) => setAdminApiKeyInput(e.target.value)}
-                                placeholder="STAKD admin key"
-                                style={{ ...inp({ flex: 1 }) }}
-                            />
-                            <button type="submit" style={{ padding: '10px 16px', borderRadius: 8, border: 'none', background: t.primary, color: '#fff', fontWeight: 700, cursor: 'pointer' }}>
-                                Unlock
-                            </button>
-                        </form>
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
-    /* ═══════════════════════════════════════════ RENDER ═══════════════════════════════════════════ */
+    const inp = (extra = {}) => ({ ...st.input, background: '#27272a', borderColor: t.border, color: t.text, minWidth: 0, ...extra });
     return (
         <div style={{ ...st.container, background: t.bg, color: t.text }}>
             <SiteHeader />
@@ -276,10 +190,10 @@ const Admin = () => {
                         </div>
                         <button
                             type="button"
-                            onClick={clearAdminApiKey}
+                            onClick={() => signOut()}
                             style={{ padding: '8px 14px', borderRadius: 8, border: `1px solid ${t.border}`, background: t.surfaceAlt, color: t.text, cursor: 'pointer', fontSize: 12, fontWeight: 600 }}
                         >
-                            Lock Admin
+                            Sign out
                         </button>
                     </div>
 
@@ -486,9 +400,6 @@ const Admin = () => {
                                     <button type="button" onClick={fetchOrders} disabled={ordersLoading} style={{ padding: '8px 14px', borderRadius: 8, border: `1px solid ${t.border}`, fontSize: 12, fontWeight: 600, cursor: ordersLoading ? 'wait' : 'pointer', background: t.surfaceAlt, color: t.text, opacity: ordersLoading ? 0.7 : 1 }}>
                                         {ordersLoading ? 'Loading orders...' : 'Refresh orders'}
                                     </button>
-                                    <button type="button" onClick={removeAllTestOrders} disabled={deletingTestOrders || orders.length === 0} style={{ marginLeft: 'auto', padding: '8px 14px', borderRadius: 8, border: `1px solid ${t.border}`, fontSize: 12, fontWeight: 600, cursor: deletingTestOrders || orders.length === 0 ? 'not-allowed' : 'pointer', background: t.surfaceAlt, color: t.text, opacity: orders.length === 0 ? 0.6 : 1 }}>
-                                        {deletingTestOrders ? 'Removing…' : 'Remove all test orders'}
-                                    </button>
                                 </div>
                             </div>
                             <div style={{ ...st.section, background: t.surface, borderColor: t.border, padding: 0, overflow: 'hidden' }}>
@@ -500,7 +411,7 @@ const Admin = () => {
                                         <tbody>
                                             {ordersLoading && (
                                                 <tr>
-                                                    <td colSpan={9} style={{ ...st.td, color: t.textMuted, textAlign: 'center' }}>Loading orders from Supabase...</td>
+                                                    <td colSpan={9} style={{ ...st.td, color: t.textMuted, textAlign: 'center' }}>Loading orders…</td>
                                                 </tr>
                                             )}
                                             {filteredOrders.map(o => (
@@ -508,7 +419,7 @@ const Admin = () => {
                                                     <td style={{ ...st.td, color: t.text, fontWeight: 600 }}>
                                                         <button
                                                             type="button"
-                                                            onClick={() => { setSelectedOrderId(o.id); fetchProductionStatus(o.id); }}
+                                                            onClick={() => setSelectedOrderId(o.id)}
                                                             style={{ background: 'none', border: 'none', padding: 0, margin: 0, color: t.primary, fontWeight: 700, cursor: 'pointer', textDecoration: 'underline' }}
                                                             title={o.id}
                                                         >
@@ -522,7 +433,7 @@ const Admin = () => {
                                                     <td style={{ ...st.td, color: t.textMuted, fontSize: 12 }}>{formatOrderDateCST(o.created_at || o.date)}</td>
                                                     <td style={st.td}><span style={{ display: 'inline-block', padding: '4px 10px', borderRadius: 6, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', background: `${getStatusColor(o.status)}20`, color: getStatusColor(o.status), border: `1px solid ${getStatusColor(o.status)}` }}>{ORDER_STATUS_LABELS[normalizeOrderStatus(o.status)] || o.status}</span></td>
                                                     <td style={st.td}>
-                                                        <button type="button" onClick={() => { setSelectedOrderId(o.id); fetchProductionStatus(o.id); }} style={{ padding: '6px 12px', borderRadius: 6, border: `1px solid ${t.border}`, fontSize: 12, cursor: 'pointer', background: t.surfaceAlt, color: t.text, fontWeight: 600 }}>View</button>
+                                                        <button type="button" onClick={() => setSelectedOrderId(o.id)} style={{ padding: '6px 12px', borderRadius: 6, border: `1px solid ${t.border}`, fontSize: 12, cursor: 'pointer', background: t.surfaceAlt, color: t.text, fontWeight: 600 }}>View</button>
                                                     </td>
                                                     <td style={st.td}>
                                                         <select value={normalizeOrderStatus(o.status)} onChange={e => updateOrderStatus(o.id, e.target.value)} style={{ padding: '6px 10px', borderRadius: 6, border: `1px solid ${t.border}`, fontSize: 12, cursor: 'pointer', background: t.surfaceAlt, color: t.text }}>
@@ -580,7 +491,17 @@ const Admin = () => {
                                                 </div>
                                             )}
 
-                                            {/* Order items and production notes removed - files generated externally */}
+                                            {selectedOrder?.order_items?.length > 0 && (
+                                                <div style={{ marginTop: 16 }}>
+                                                    <h4 style={{ margin: '0 0 10px', fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.5, color: t.textMuted }}>Order items</h4>
+                                                    {(selectedOrder.order_items || []).map((item, i) => (
+                                                        <div key={item.id || i} style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 0', borderBottom: `1px solid ${t.border}`, fontSize: 13 }}>
+                                                            <span style={{ color: t.text }}>{item.products?.name ?? item.product_id}</span>
+                                                            <span style={{ color: t.textMuted }}>{item.quantity} × ${Number(item.price_at_time).toFixed(2)}</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -798,19 +719,27 @@ const Admin = () => {
                             </button>
                             <button
                                 type="button"
-                                onClick={() => {
-                                    setProductOverride(editingProduct.id, {
-                                        price: parseFloat(editDraft.price) || 0,
-                                        inStock: editDraft.inStock,
-                                        featured: editDraft.featured,
-                                        limited: editDraft.limited,
-                                        images: editDraft.images || [],
-                                    });
-                                    setEditingProduct(null);
+                                disabled={savingProduct}
+                                onClick={async () => {
+                                    setSavingProduct(true);
+                                    try {
+                                        await setProductOverride(editingProduct.id, {
+                                            price: parseFloat(editDraft.price) || 0,
+                                            inStock: editDraft.inStock,
+                                            featured: editDraft.featured,
+                                            limited: editDraft.limited,
+                                            images: editDraft.images || [],
+                                        });
+                                        setEditingProduct(null);
+                                    } catch (e) {
+                                        alert(e?.message || 'Failed to save product');
+                                    } finally {
+                                        setSavingProduct(false);
+                                    }
                                 }}
-                                style={{ padding: '10px 24px', borderRadius: 8, border: 'none', background: t.primary, color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer' }}
+                                style={{ padding: '10px 24px', borderRadius: 8, border: 'none', background: t.primary, color: '#fff', fontWeight: 700, fontSize: 14, cursor: savingProduct ? 'wait' : 'pointer' }}
                             >
-                                Save Changes
+                                {savingProduct ? 'Saving…' : 'Save Changes'}
                             </button>
                         </div>
                     </div>

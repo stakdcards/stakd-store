@@ -96,9 +96,11 @@ function ProductCard({ product }) {
                         )}
                     </div>
                 </div>
-                <p style={{ fontSize: 13, color: t.textMuted, margin: 0, lineHeight: 1.5, flex: 1 }}>
-                    {product.description.slice(0, 90)}…
-                </p>
+                {(product.description != null && product.description !== '') && (
+                    <p style={{ fontSize: 13, color: t.textMuted, margin: 0, lineHeight: 1.5, flex: 1 }}>
+                        {(product.description || '').slice(0, 90)}…
+                    </p>
+                )}
                 <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
                     <AddToCartBtn product={product} style={{ flex: 1 }} />
                     <Link to={`/products?id=${product.id}`} style={{

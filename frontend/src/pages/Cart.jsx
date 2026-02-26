@@ -111,6 +111,7 @@ const Cart = () => {
         setStripeRedirecting(true);
         try {
             const items = cartItems.map(({ product, quantity }) => ({
+                product_id: product.id,
                 name: product.name,
                 price: product.price,
                 quantity,
@@ -119,7 +120,14 @@ const Cart = () => {
             const res = await fetch('/api/create-checkout-session', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ items, successUrlBase: window.location.origin }),
+                body: JSON.stringify({
+                    items,
+                    successUrlBase: window.location.origin,
+                    subtotal: cartSubtotal,
+                    tax,
+                    shipping_cost: shippingCost,
+                    shipping_method: shipping,
+                }),
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || 'Checkout session failed');

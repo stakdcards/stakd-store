@@ -5,8 +5,10 @@ import React from 'react';
  * Simulates the physical layered shadowbox product with depth, mat board, and frame.
  */
 export const ShadowboxPreview = ({ product, minimal = false }) => {
-    const { bgColor, accentColor, palette, name, subtitle, franchise, limited, inStock } = product;
-    const mid = palette?.[1] || bgColor;
+    const { bgColor, accentColor, palette, name, subtitle, franchise, limited, inStock } = product || {};
+    const bg = bgColor || '#0d0d0d';
+    const accent = accentColor || '#4a4a4a';
+    const mid = (Array.isArray(palette) && palette[1]) ? palette[1] : bg;
 
     return (
         <div style={{
@@ -31,14 +33,14 @@ export const ShadowboxPreview = ({ product, minimal = false }) => {
                 position: 'absolute',
                 inset: minimal ? 5 : 8,
                 borderRadius: minimal ? 3 : 5,
-                background: `linear-gradient(165deg, ${bgColor} 0%, ${mid} 55%, ${bgColor} 100%)`,
+                background: `linear-gradient(165deg, ${bg} 0%, ${mid} 55%, ${bg} 100%)`,
                 overflow: 'hidden',
                 boxShadow: 'inset 0 2px 8px rgba(0,0,0,0.5)',
             }}>
                 {/* Background atmospheric glow */}
                 <div style={{
                     position: 'absolute', inset: 0,
-                    background: `radial-gradient(ellipse 120% 80% at 70% 30%, ${accentColor}28 0%, transparent 65%)`,
+                    background: `radial-gradient(ellipse 120% 80% at 70% 30%, ${accent}28 0%, transparent 65%)`,
                     pointerEvents: 'none',
                 }} />
 
@@ -47,7 +49,7 @@ export const ShadowboxPreview = ({ product, minimal = false }) => {
                     position: 'absolute',
                     top: '-30%', right: '-20%',
                     width: '80%', height: '140%',
-                    background: `linear-gradient(${accentColor}10, transparent)`,
+                    background: `linear-gradient(${accent}10, transparent)`,
                     transform: 'rotate(15deg)',
                     pointerEvents: 'none',
                 }} />
@@ -56,7 +58,7 @@ export const ShadowboxPreview = ({ product, minimal = false }) => {
                 <div style={{
                     position: 'absolute', top: 0, left: '10%', right: '10%',
                     height: 2,
-                    background: `linear-gradient(90deg, transparent, ${accentColor}88, transparent)`,
+                    background: `linear-gradient(90deg, transparent, ${accent}88, transparent)`,
                 }} />
 
                 {/* STAKD icon watermark */}
@@ -78,7 +80,7 @@ export const ShadowboxPreview = ({ product, minimal = false }) => {
                     position: 'absolute',
                     bottom: '22%', left: '12%', right: '12%',
                     height: '55%',
-                    background: `linear-gradient(to top, ${accentColor}22 0%, transparent 100%)`,
+                    background: `linear-gradient(to top, ${accent}22 0%, transparent 100%)`,
                     borderRadius: '50% 50% 0 0',
                     filter: 'blur(4px)',
                 }} />
@@ -88,7 +90,7 @@ export const ShadowboxPreview = ({ product, minimal = false }) => {
                     <div style={{
                         position: 'absolute', top: limited ? 36 : 10, left: 10,
                         fontSize: 8, fontWeight: 800, letterSpacing: 1.5,
-                        textTransform: 'uppercase', color: accentColor,
+                        textTransform: 'uppercase', color: accent,
                         opacity: 0.85,
                     }}>
                         {franchise}
@@ -104,7 +106,7 @@ export const ShadowboxPreview = ({ product, minimal = false }) => {
                     {!minimal && (
                         <div style={{
                             fontSize: 9, fontWeight: 700, letterSpacing: 2,
-                            textTransform: 'uppercase', color: accentColor,
+                            textTransform: 'uppercase', color: accent,
                             marginBottom: 3, opacity: 0.9,
                         }}>
                             {subtitle || franchise}
@@ -136,8 +138,8 @@ export const ShadowboxPreview = ({ product, minimal = false }) => {
                     }}>
                         <span style={{
                             width: 4, height: 4, borderRadius: '50%',
-                            background: accentColor,
-                            boxShadow: `0 0 6px ${accentColor}`,
+                            background: accent,
+                            boxShadow: `0 0 6px ${accent}`,
                             flexShrink: 0,
                         }} />
                         <span style={{

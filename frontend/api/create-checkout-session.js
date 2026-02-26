@@ -13,7 +13,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { items, successUrlBase } = req.body || {};
+    const { items, successUrlBase, subtotal, tax, shipping_cost, shipping_method } = req.body || {};
     if (!Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ error: 'items array is required and must not be empty' });
     }
@@ -34,11 +34,26 @@ export default async function handler(req, res) {
       quantity: Math.max(1, Math.floor(Number(item.quantity) || 1)),
     }));
 
+    const cartItemsForMetadata = items.map((item) => ({
+      product_id: item.product_id,
+      quantity: Math.max(1, Math.floor(Number(item.quantity) || 1)),
+      price_at_time: Number(item.price),
+    }));
+    const metadata = {
+      cart_items: JSON.stringify(cartItemsForMetadata),
+      subtotal: String(Number(subtotal) || 0),
+      tax: String(Number(tax) || 0),
+      shipping_cost: String(Number(shipping_cost) || 0),
+      shipping_method: String(shipping_method || 'standard'),
+    };
+
     const session = await stripe.checkout.sessions.create({
       mode: 'payment',
       line_items,
       success_url: successUrl,
       cancel_url: cancelUrl,
+      metadata,
+      shipping_address_collection: { allowed_countries: ['US'] },
     });
 
     return res.status(200).json({ url: session.url });

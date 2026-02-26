@@ -54,9 +54,9 @@ function ProductCard({ product }) {
                         {product.limited && <div style={{ fontSize: 8, fontWeight: 800, color: t.primary, letterSpacing: 0.8, textTransform: 'uppercase', marginTop: 2 }}>Limited</div>}
                     </div>
                 </div>
-                {!isMobile && (
+                {!isMobile && (product.description != null && product.description !== '') && (
                     <p style={{ fontSize: 12, color: t.textMuted, margin: 0, lineHeight: 1.5, flex: 1 }}>
-                        {product.description.slice(0, 80)}…
+                        {(product.description || '').slice(0, 80)}…
                     </p>
                 )}
                 <div style={{ display: 'flex', gap: isMobile ? 6 : 8 }}>

@@ -131,7 +131,12 @@ const SiteHeader = () => {
                         minHeight: 36,
                         boxSizing: 'border-box',
                     })} title={user ? 'My Account' : 'Sign In'}>
-                        <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        {user && firstName && !isMobile && (
+                            <span style={{ fontSize: 13, fontWeight: 600, color: 'inherit', maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {firstName}
+                            </span>
+                        )}
+                        <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
                             <AccountIcon />
                             {user && (
                                 <span style={{
@@ -141,11 +146,6 @@ const SiteHeader = () => {
                                 }} />
                             )}
                         </span>
-                        {user && firstName && !isMobile && (
-                            <span style={{ fontSize: 13, fontWeight: 600, color: 'inherit', maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                {firstName}
-                            </span>
-                        )}
                     </NavLink>
                     <NavLink to="/cart" style={({ isActive }) => ({
                         ...iconBtn,

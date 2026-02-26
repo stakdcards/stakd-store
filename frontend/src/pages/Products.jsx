@@ -102,14 +102,96 @@ function ProductDetail({ product, onClose }) {
     const isMobile = window.innerWidth < 640;
     const images = (product.images && Array.isArray(product.images)) ? product.images.filter(img => img.url || img.dataUrl) : [];
     const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+    const [fullscreenOpen, setFullscreenOpen] = useState(false);
     useEffect(() => { setSelectedImageIndex(0); }, [product.id]);
+
+    useEffect(() => {
+        if (!fullscreenOpen) return;
+        const onKey = (e) => {
+            if (e.key === 'Escape') setFullscreenOpen(false);
+            if (images.length <= 1) return;
+            if (e.key === 'ArrowLeft') setSelectedImageIndex(i => (i - 1 + images.length) % images.length);
+            if (e.key === 'ArrowRight') setSelectedImageIndex(i => (i + 1) % images.length);
+        };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+    }, [fullscreenOpen, images.length]);
 
     const hasGallery = images.length > 0;
     const mainImageUrl = hasGallery && images[selectedImageIndex] ? (images[selectedImageIndex].url || images[selectedImageIndex].dataUrl) : null;
 
+    const goPrev = () => setSelectedImageIndex(i => (i - 1 + images.length) % images.length);
+    const goNext = () => setSelectedImageIndex(i => (i + 1) % images.length);
+
     return (
         <div style={{ position: 'fixed', inset: 0, zIndex: 300, display: 'flex', alignItems: isMobile ? 'flex-end' : 'center', justifyContent: 'center', padding: isMobile ? 0 : 20, background: t.dimOverlay }}
             onClick={onClose}>
+            {/* Fullscreen image viewer */}
+            {fullscreenOpen && hasGallery && (
+                <div
+                    style={{
+                        position: 'fixed', inset: 0, zIndex: 400,
+                        background: 'rgba(0,0,0,0.95)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        padding: 48,
+                    }}
+                    onClick={(e) => e.target === e.currentTarget && setFullscreenOpen(false)}
+                >
+                    <button
+                        type="button"
+                        onClick={() => setFullscreenOpen(false)}
+                        style={{
+                            position: 'absolute', top: 16, right: 16, width: 44, height: 44,
+                            borderRadius: 50%, border: '1px solid rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.1)',
+                            color: '#fff', fontSize: 22, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        }}
+                        aria-label="Close"
+                    >
+                        ×
+                    </button>
+                    {images.length > 1 && (
+                        <>
+                            <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); goPrev(); }}
+                                style={{
+                                    position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)',
+                                    width: 48, height: 48, borderRadius: 50%, border: '1px solid rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.1)',
+                                    color: '#fff', fontSize: 24, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                }}
+                                aria-label="Previous image"
+                            >
+                                ‹
+                            </button>
+                            <button
+                                type="button"
+                                onClick={(e) => { e.stopPropagation(); goNext(); }}
+                                style={{
+                                    position: 'absolute', right: 16, top: '50%', transform: 'translateY(-50%)',
+                                    width: 48, height: 48, borderRadius: 50%, border: '1px solid rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.1)',
+                                    color: '#fff', fontSize: 24, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                }}
+                                aria-label="Next image"
+                            >
+                                ›
+                            </button>
+                        </>
+                    )}
+                    <img
+                        src={mainImageUrl}
+                        alt={product.name}
+                        style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+                        onClick={(e) => e.stopPropagation()}
+                    />
+                    {images.length > 1 && (
+                        <div style={{
+                            position: 'absolute', bottom: 24, left: '50%', transform: 'translateX(-50%)',
+                            fontSize: 13, color: 'rgba(255,255,255,0.7)',
+                        }}>
+                            {selectedImageIndex + 1} / {images.length}
+                        </div>
+                    )}
+                </div>
+            )}
             <div style={{
                 background: t.surface,
                 borderRadius: isMobile ? '18px 18px 0 0' : 18,
@@ -136,9 +218,10 @@ function ProductDetail({ product, onClose }) {
                         <div style={{ padding: '4px 20px 0', maxWidth: 220, margin: '0 auto' }}>
                             {hasGallery ? (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                                    <div style={{ aspectRatio: '3/4', borderRadius: 8, overflow: 'hidden', background: t.surfaceAlt }}>
+                                    <button type="button" onClick={() => setFullscreenOpen(true)} title="View fullscreen" style={{ position: 'relative', aspectRatio: '3/4', borderRadius: 8, overflow: 'hidden', background: t.surfaceAlt, padding: 0, border: 'none', cursor: 'pointer', display: 'block', width: '100%' }}>
                                         <img src={mainImageUrl} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                    </div>
+                                        <span style={{ position: 'absolute', top: 8, right: 8, width: 28, height: 28, borderRadius: 6, background: 'rgba(0,0,0,0.5)', color: '#fff', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }} aria-hidden>⛶</span>
+                                    </button>
                                     {images.length > 1 && (
                                         <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
                                             {images.map((img, i) => (
@@ -201,9 +284,10 @@ function ProductDetail({ product, onClose }) {
                     <div style={{ padding: 'clamp(20px, 3vw, 36px)', display: 'flex', flexDirection: 'column', gap: 12 }}>
                         {hasGallery ? (
                             <>
-                                <div style={{ aspectRatio: '3/4', borderRadius: 10, overflow: 'hidden', background: t.surfaceAlt }}>
+                                <button type="button" onClick={() => setFullscreenOpen(true)} title="View fullscreen" style={{ position: 'relative', aspectRatio: '3/4', borderRadius: 10, overflow: 'hidden', background: t.surfaceAlt, padding: 0, border: 'none', cursor: 'pointer', display: 'block', width: '100%' }}>
                                     <img src={mainImageUrl} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                </div>
+                                    <span style={{ position: 'absolute', top: 10, right: 10, width: 32, height: 32, borderRadius: 8, background: 'rgba(0,0,0,0.5)', color: '#fff', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }} aria-hidden>⛶</span>
+                                </button>
                                 {images.length > 1 && (
                                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                                         {images.map((img, i) => (

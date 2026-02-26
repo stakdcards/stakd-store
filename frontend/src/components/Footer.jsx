@@ -65,9 +65,9 @@ const Footer = () => {
             }}>
                 {isMobile ? (
                     <>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', flexWrap: 'wrap', gap: 12 }}>
                             <img src="/stakd-wordmark-offwhite.png" alt="STAKD" style={{ height: 18, width: 'auto', opacity: 0.7 }} />
-                            <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                                 {SOCIAL_LINKS.map(s => (
                                     <a key={s.label} href={s.href} target="_blank" rel="noopener noreferrer" aria-label={s.label} className="stakd-social-icon"
                                         style={{ color: t.textMuted, display: 'flex', alignItems: 'center' }}
@@ -76,6 +76,7 @@ const Footer = () => {
                                         {s.icon}
                                     </a>
                                 ))}
+                                <span style={{ fontSize: 12, color: t.textMuted, fontWeight: 600 }}>@stakdcards</span>
                             </div>
                         </div>
                         <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', justifyContent: 'center' }}>
@@ -86,25 +87,24 @@ const Footer = () => {
                         <div style={{ fontSize: 11, color: t.textFaint }}>© {new Date().getFullYear()} STAKD · stakdcards.com</div>
                     </>
                 ) : (
-                    <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 24 }}>
+                    <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 24, flexWrap: 'wrap' }}>
                         <img src="/stakd-wordmark-offwhite.png" alt="STAKD" style={{ height: 18, width: 'auto', opacity: 0.7 }} />
                         <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', justifyContent: 'center' }}>
                             {NAV_LINKS.map(l => (
                                 <Link key={l.to} to={l.to} className="stakd-footer-link" style={{ fontSize: 13, color: t.textMuted, textDecoration: 'none', fontWeight: 600 }}>{l.label}</Link>
                             ))}
                         </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 10 }}>
-                            <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-                                {SOCIAL_LINKS.map(s => (
-                                    <a key={s.label} href={s.href} target="_blank" rel="noopener noreferrer" aria-label={s.label} className="stakd-social-icon"
-                                        style={{ color: t.textMuted, display: 'flex', alignItems: 'center' }}
-                                        onMouseEnter={e => { e.currentTarget.style.color = t.primary; }}
-                                        onMouseLeave={e => { e.currentTarget.style.color = t.textMuted; }}>
-                                        {s.icon}
-                                    </a>
-                                ))}
-                            </div>
-                            <div style={{ fontSize: 11, color: t.textFaint }}>© {new Date().getFullYear()} STAKD · stakdcards.com</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+                            {SOCIAL_LINKS.map(s => (
+                                <a key={s.label} href={s.href} target="_blank" rel="noopener noreferrer" aria-label={s.label} className="stakd-social-icon"
+                                    style={{ color: t.textMuted, display: 'flex', alignItems: 'center' }}
+                                    onMouseEnter={e => { e.currentTarget.style.color = t.primary; }}
+                                    onMouseLeave={e => { e.currentTarget.style.color = t.textMuted; }}>
+                                    {s.icon}
+                                </a>
+                            ))}
+                            <span style={{ fontSize: 12, color: t.textMuted, fontWeight: 600 }}>@stakdcards</span>
+                            <span style={{ fontSize: 11, color: t.textFaint }}>© {new Date().getFullYear()} STAKD · stakdcards.com</span>
                         </div>
                     </div>
                 )}

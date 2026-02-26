@@ -19,6 +19,9 @@ function CartItem({ item }) {
     const { t } = useDarkMode();
     const { updateQuantity, removeFromCart } = useCart();
     const { product, quantity } = item;
+    const firstImageUrl = (product.images && product.images.length > 0 && (product.images[0].url || product.images[0].dataUrl))
+        ? (product.images[0].url || product.images[0].dataUrl)
+        : null;
 
     const isNarrow = window.innerWidth < 480;
     return (
@@ -27,8 +30,12 @@ function CartItem({ item }) {
             gap: isNarrow ? 12 : 16, padding: isNarrow ? '16px 0' : '20px 0',
             borderBottom: `1px solid ${t.border}`,
         }}>
-            <div style={{ borderRadius: 8, overflow: 'hidden' }}>
-                <ShadowboxPreview product={product} minimal />
+            <div style={{ borderRadius: 8, overflow: 'hidden', aspectRatio: '3/4', background: t.surfaceAlt }}>
+                {firstImageUrl ? (
+                    <img src={firstImageUrl} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                    <ShadowboxPreview product={product} minimal />
+                )}
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
@@ -379,7 +386,7 @@ const Cart = () => {
                                                     cursor: reminderSending ? 'wait' : 'pointer', opacity: reminderSending ? 0.7 : 1,
                                                 }}
                                             >
-                                                {reminderSending ? '…' : 'Remind me'}
+                                                {reminderSending ? '…' : 'Remind'}
                                             </button>
                                         </div>
                                         {reminderFeedback && <p style={{ fontSize: 12, color: reminderFeedback.startsWith('✓') ? '#22c55e' : '#ef4444', margin: '8px 0 0' }}>{reminderFeedback}</p>}

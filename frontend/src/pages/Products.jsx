@@ -134,19 +134,22 @@ function ProductDetail({ product, onClose }) {
                         background: 'rgba(0,0,0,0.95)', display: 'flex', alignItems: 'center', justifyContent: 'center',
                         padding: 48,
                     }}
-                    onClick={(e) => e.target === e.currentTarget && setFullscreenOpen(false)}
+                    onClick={(e) => { e.stopPropagation(); if (e.target === e.currentTarget) setFullscreenOpen(false); }}
                 >
                     <button
                         type="button"
-                        onClick={() => setFullscreenOpen(false)}
+                        onClick={(e) => { e.stopPropagation(); setFullscreenOpen(false); }}
                         style={{
                             position: 'absolute', top: 16, right: 16, width: 44, height: 44,
                             borderRadius: '50%', border: '1px solid rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.1)',
-                            color: '#fff', fontSize: 22, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            padding: 0,
                         }}
                         aria-label="Close"
                     >
-                        ×
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                            <path d="M18 6L6 18M6 6l12 12" />
+                        </svg>
                     </button>
                     {images.length > 1 && (
                         <>

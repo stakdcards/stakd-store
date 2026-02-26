@@ -378,15 +378,15 @@ const Admin = () => {
                                         {products.map(p => (
                                             <tr key={p.id} style={{ borderBottom: `1px solid ${t.border}` }}>
                                                 <td style={{ ...st.td, color: t.text, fontWeight: 600 }}>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
                                                         {(p.images && p.images.length > 0 && (p.images[0].url || p.images[0].dataUrl)) ? (
-                                                            <img src={p.images[0].url || p.images[0].dataUrl} alt="" style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 8, border: `1px solid ${t.border}`, flexShrink: 0 }} />
+                                                            <img src={p.images[0].url || p.images[0].dataUrl} alt="" style={{ width: 88, height: 88, objectFit: 'cover', borderRadius: 8, border: `1px solid ${t.border}`, flexShrink: 0 }} />
                                                         ) : (
-                                                            <div style={{ width: 44, height: 44, borderRadius: 8, border: `1px solid ${t.border}`, background: t.surfaceAlt, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: t.textFaint }}>No img</div>
+                                                            <div style={{ width: 88, height: 88, borderRadius: 8, border: `1px solid ${t.border}`, background: t.surfaceAlt, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: t.textFaint }}>No img</div>
                                                         )}
-                                                        <div>
-                                                            <div>{p.name}</div>
-                                                            <div style={{ fontSize: 11, color: t.textMuted, fontWeight: 400, marginTop: 2 }}>{p.franchise || ''}</div>
+                                                        <div style={{ minWidth: 0, flex: 1 }}>
+                                                            <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</div>
+                                                            <div style={{ fontSize: 11, color: t.textMuted, fontWeight: 400, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.franchise || ''}</div>
                                                         </div>
                                                     </div>
                                                 </td>

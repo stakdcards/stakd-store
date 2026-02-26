@@ -52,3 +52,21 @@ export async function deleteSubscriber(id: string): Promise<void> {
     .eq('id', id);
   if (error) throw error;
 }
+
+export type EmailAutomationSettings = Record<string, string>;
+
+export async function fetchEmailAutomation(): Promise<EmailAutomationSettings> {
+  const { data, error } = await supabase
+    .from('email_automation')
+    .select('key, value');
+  if (error) throw error;
+  return Object.fromEntries((data || []).map((r: { key: string; value: string }) => [r.key, r.value]));
+}
+
+export async function updateEmailAutomation(key: string, value: string): Promise<void> {
+  const { error } = await supabase
+    .from('email_automation')
+    .update({ value })
+    .eq('key', key);
+  if (error) throw error;
+}

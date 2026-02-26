@@ -86,6 +86,9 @@ const Cart = () => {
     const [shipping, setShipping] = useState('standard');
     const [step, setStep] = useState('cart'); // cart | checkout | confirmed
     const [isMobile, setIsMobile] = useState(window.innerWidth < 700);
+    const [reminderEmail, setReminderEmail] = useState('');
+    const [reminderSending, setReminderSending] = useState(false);
+    const [reminderFeedback, setReminderFeedback] = useState('');
 
     useEffect(() => {
         const onResize = () => setIsMobile(window.innerWidth < 700);
@@ -326,17 +329,62 @@ const Cart = () => {
                             </div>
 
                             {step === 'cart' ? (
-                                <button
-                                    onClick={() => setStep('checkout')}
-                                    style={{
-                                        width: '100%', marginTop: 20, padding: '14px 0', borderRadius: 10,
-                                        border: 'none', background: t.primary, color: '#fff',
-                                        fontWeight: 800, fontSize: 15, cursor: 'pointer',
-                                        letterSpacing: 0.5,
-                                    }}
-                                >
-                                    Proceed to Checkout →
-                                </button>
+                                <>
+                                    <button
+                                        onClick={() => setStep('checkout')}
+                                        style={{
+                                            width: '100%', marginTop: 20, padding: '14px 0', borderRadius: 10,
+                                            border: 'none', background: t.primary, color: '#fff',
+                                            fontWeight: 800, fontSize: 15, cursor: 'pointer',
+                                            letterSpacing: 0.5,
+                                        }}
+                                    >
+                                        Proceed to Checkout →
+                                    </button>
+                                    <div style={{ marginTop: 20, paddingTop: 16, borderTop: `1px solid ${t.border}` }}>
+                                        <p style={{ fontSize: 12, color: t.textMuted, margin: '0 0 10px' }}>Want a reminder? We'll email you in 24 hours.</p>
+                                        <div style={{ display: 'flex', gap: 8 }}>
+                                            <input
+                                                type="email"
+                                                value={reminderEmail}
+                                                onChange={e => { setReminderEmail(e.target.value); setReminderFeedback(''); }}
+                                                placeholder="you@example.com"
+                                                style={{
+                                                    flex: 1, padding: '10px 12px', borderRadius: 8, border: `1px solid ${t.border}`,
+                                                    background: t.inputBg || t.surface, color: t.text, fontSize: 13, outline: 'none',
+                                                }}
+                                            />
+                                            <button
+                                                type="button"
+                                                disabled={reminderSending || !reminderEmail.trim()}
+                                                onClick={async () => {
+                                                    setReminderSending(true); setReminderFeedback('');
+                                                    try {
+                                                        const res = await fetch('/api/record-cart-reminder', {
+                                                            method: 'POST', headers: { 'Content-Type': 'application/json' },
+                                                            body: JSON.stringify({
+                                                                email: reminderEmail.trim(),
+                                                                cart: cartItems.map(({ product, quantity }) => ({ product_id: product.id, name: product.name, quantity, price: product.price })),
+                                                            }),
+                                                        });
+                                                        const data = await res.json().catch(() => ({}));
+                                                        if (res.ok) { setReminderFeedback('✓ We’ll remind you in 24 hours.'); setReminderEmail(''); }
+                                                        else setReminderFeedback(data.error || 'Something went wrong.');
+                                                    } catch (err) { setReminderFeedback('Network error. Try again.'); }
+                                                    setReminderSending(false);
+                                                }}
+                                                style={{
+                                                    padding: '10px 16px', borderRadius: 8, border: 'none',
+                                                    background: t.primary, color: '#fff', fontWeight: 700, fontSize: 12,
+                                                    cursor: reminderSending ? 'wait' : 'pointer', opacity: reminderSending ? 0.7 : 1,
+                                                }}
+                                            >
+                                                {reminderSending ? '…' : 'Remind me'}
+                                            </button>
+                                        </div>
+                                        {reminderFeedback && <p style={{ fontSize: 12, color: reminderFeedback.startsWith('✓') ? '#22c55e' : '#ef4444', margin: '8px 0 0' }}>{reminderFeedback}</p>}
+                                    </div>
+                                </>
                             ) : (
                                 <button
                                     type="button"

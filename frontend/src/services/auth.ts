@@ -9,6 +9,7 @@ export type Profile = {
   name: string | null;
   phone: string | null;
   created_at: string;
+  welcome_email_sent_at?: string | null;
   updated_at: string;
 };
 

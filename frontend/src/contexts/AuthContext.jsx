@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import * as authService from '../services/auth';
 import { identifyUser, resetUser } from '../lib/posthog';
 
@@ -19,6 +19,16 @@ export const AuthProvider = ({ children }) => {
         const p = await authService.getProfile();
         setProfile(p);
     }, []);
+
+    const welcomeTriggered = useRef(false);
+    useEffect(() => {
+        if (!session?.access_token || !profile || profile.welcome_email_sent_at != null || welcomeTriggered.current) return;
+        welcomeTriggered.current = true;
+        fetch(`${import.meta.env.VITE_APP_URL || ''}/api/send-welcome`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${session.access_token}` },
+        }).catch(() => {});
+    }, [session?.access_token, profile]);
 
     useEffect(() => {
         authService.getCurrentSession().then(async (s) => {

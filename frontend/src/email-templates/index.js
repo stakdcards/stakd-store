@@ -1,10 +1,12 @@
 /**
- * STAKD Cards — Email Templates
- * All functions return an HTML string ready for Resend.
+ * STAKD Cards — Email Templates (Resend / app-sent emails)
+ * Uses the same fonts, colors, and styling as the site (dark theme).
+ * Supabase auth emails use the templates in ../supabase-email-templates/.
  */
 
 const BASE_URL = 'https://www.stakdcards.com';
 
+// Matches site: DarkModeContext THEMES.dark + primary indigo
 const BRAND = {
     indigo: '#2A2A69',
     indigoMid: '#434EA1',
@@ -14,7 +16,13 @@ const BRAND = {
     bg: '#0D0E11',
     surface: '#191B20',
     border: '#2C303A',
+    muted: '#BEBBAC',
+    faint: '#898675',
+    footer: '#565349',
 };
+
+const FONT_BODY = "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+const FONT_HEADING = "'Big Shoulders Display', -apple-system, BlinkMacSystemFont, sans-serif";
 
 function wrapper(title, body) {
     return `<!DOCTYPE html>
@@ -23,22 +31,23 @@ function wrapper(title, body) {
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>${title}</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@700;800;900&family=Inter:wght@400;600;700;800&display=swap" />
   <style>
-    body { margin:0; padding:0; background:${BRAND.bg}; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; color:${BRAND.offWhite}; }
+    body { margin:0; padding:0; background:${BRAND.bg}; font-family: ${FONT_BODY}; color:${BRAND.offWhite}; -webkit-font-smoothing: antialiased; }
     .wrap { max-width:560px; margin:0 auto; padding:40px 20px; }
     .card { background:${BRAND.surface}; border:1px solid ${BRAND.border}; border-radius:16px; overflow:hidden; }
     .header { background:${BRAND.indigo}; padding:28px 32px; text-align:center; }
-    .header img { height:28px; }
+    .header img { height:28px; display:block; margin:0 auto; }
     .body { padding:32px; }
-    h1 { font-size:22px; font-weight:800; margin:0 0 8px; color:${BRAND.offWhite}; }
-    p { font-size:14px; line-height:1.7; color:#BEBBAC; margin:0 0 16px; }
-    .btn { display:inline-block; padding:12px 28px; border-radius:10px; background:${BRAND.indigoMid}; color:#fff !important; font-weight:700; font-size:14px; text-decoration:none; margin-top:4px; }
+    h1 { font-size:22px; font-weight:800; margin:0 0 8px; color:${BRAND.offWhite}; letter-spacing:-0.02em; font-family: ${FONT_HEADING}; text-transform: uppercase; }
+    p { font-size:14px; line-height:1.7; color:${BRAND.muted}; margin:0 0 16px; font-family: ${FONT_BODY}; }
+    .btn { display:inline-block; padding:12px 28px; border-radius:10px; background:${BRAND.indigoMid}; color:#fff !important; font-weight:700; font-size:14px; text-decoration:none; margin-top:4px; letter-spacing:0.02em; font-family: ${FONT_BODY}; }
     .divider { border:none; border-top:1px solid ${BRAND.border}; margin:24px 0; }
-    .row { display:flex; justify-content:space-between; font-size:13px; padding:6px 0; border-bottom:1px solid ${BRAND.border}; }
-    .label { color:#898675; }
+    .row { display:flex; justify-content:space-between; font-size:13px; padding:6px 0; border-bottom:1px solid ${BRAND.border}; font-family: ${FONT_BODY}; }
+    .label { color:${BRAND.faint}; }
     .val { font-weight:600; color:${BRAND.offWhite}; }
-    .footer { text-align:center; padding:24px 20px 8px; font-size:11px; color:#565349; line-height:1.8; }
-    .footer a { color:#565349; }
+    .footer { text-align:center; padding:24px 20px 8px; font-size:11px; color:${BRAND.footer}; line-height:1.8; font-family: ${FONT_BODY}; }
+    .footer a { color:${BRAND.footer}; text-decoration:none; }
   </style>
 </head>
 <body>
@@ -140,6 +149,29 @@ export function welcomeEmail({ name }) {
         <li>Manage your profile and shipping preferences</li>
       </ul>
       <div style="margin-top:24px"><a class="btn" href="${BASE_URL}/products">Shop the Collection</a></div>
+    `);
+}
+
+/**
+ * Abandoned cart nudge — sent after delay when user requested a reminder.
+ * @param {object} params
+ * @param {string} params.name  - Optional first name
+ * @param {Array}  params.items - [{ name, quantity, price }] (from cart_snapshot)
+ * @param {string} params.cartUrl - Link back to cart/products
+ */
+export function nudgeEmail({ name, items = [], cartUrl }) {
+    const url = cartUrl || `${BASE_URL}/cart`;
+    const itemRows = (items || []).slice(0, 5).map(item => `
+      <div class="row">
+        <span class="label">${item.name || 'Item'} × ${item.quantity || 1}</span>
+        <span class="val">$${Number((item.price || 0) * (item.quantity || 1)).toFixed(2)}</span>
+      </div>`).join('');
+    return wrapper('Your cart is waiting — STAKD Cards', `
+      <h1>Still thinking it over?</h1>
+      <p>Hey ${name || 'there'}, you left some items in your cart. We've saved them for you.</p>
+      ${itemRows ? `<hr class="divider" />${itemRows}<hr class="divider" />` : ''}
+      <p>Come back anytime to finish your order — we'll keep crafting until you're ready.</p>
+      <div style="margin-top:24px"><a class="btn" href="${url}">Finish my order</a></div>
     `);
 }
 

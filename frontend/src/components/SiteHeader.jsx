@@ -120,13 +120,14 @@ const SiteHeader = () => {
                 {/* Right controls */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 2 : 8, marginLeft: 'auto', justifyContent: 'flex-end' }}>
                     <NavLink to={user ? '/account' : '/login'} style={({ isActive }) => ({
+                        ...(isMobile ? iconBtn : {}),
                         display: 'flex',
                         alignItems: 'center',
                         gap: 8,
                         position: 'relative',
                         color: isActive ? t.primary : t.textMuted,
                         textDecoration: 'none',
-                        padding: '6px 10px',
+                        padding: isMobile ? 0 : '6px 10px',
                         borderRadius: 8,
                         minHeight: 36,
                         boxSizing: 'border-box',

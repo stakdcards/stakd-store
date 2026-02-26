@@ -7,7 +7,7 @@ import * as ordersService from '../services/orders';
 import * as productsService from '../services/products';
 import * as storageService from '../services/storage';
 import * as emailsService from '../services/emails';
-import { orderConfirmation, orderShipped, welcomeEmail, newsletterTemplate } from '../email-templates/index.js';
+import { orderConfirmation, orderShipped, welcomeEmail, newsletterTemplate, nudgeEmail } from '../email-templates/index.js';
 
 const BRAND_INDIGO = '#2A2A69';
 const MOBILE_BP = 768;
@@ -75,7 +75,7 @@ function formatOrderDateCST(createdAt) {
 
 const Admin = () => {
     const { t } = useDarkMode();
-    const { signOut } = useAuth();
+    const { signOut, user, session } = useAuth();
     const { products, setProductOverride, refetch: refetchProducts, categories } = useProductStore();
     const [activeTab, setActiveTab] = useState(() => {
         const params = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '');
@@ -110,6 +110,17 @@ const Admin = () => {
     const [composeBody, setComposeBody] = useState('');
     const [composeSending, setComposeSending] = useState(false);
     const [composeFeedback, setComposeFeedback] = useState('');
+
+    // ── Automation & newsletter ──
+    const [automationSettings, setAutomationSettings] = useState({});
+    const [automationLoading, setAutomationLoading] = useState(false);
+    const [newsletterSubject, setNewsletterSubject] = useState('');
+    const [newsletterHeadline, setNewsletterHeadline] = useState('');
+    const [newsletterBody, setNewsletterBody] = useState('');
+    const [newsletterCtaText, setNewsletterCtaText] = useState('Shop Now');
+    const [newsletterCtaUrl, setNewsletterCtaUrl] = useState('https://www.stakdcards.com/products');
+    const [newsletterSending, setNewsletterSending] = useState(false);
+    const [newsletterFeedback, setNewsletterFeedback] = useState('');
 
     // ── Label state ──
     const [labelLoading, setLabelLoading] = useState({});
@@ -179,6 +190,18 @@ const Admin = () => {
         }
     }, []);
 
+    const fetchEmailAutomation = useCallback(async () => {
+        setAutomationLoading(true);
+        try {
+            const settings = await emailsService.fetchEmailAutomation();
+            setAutomationSettings(settings);
+        } catch (e) {
+            console.error('fetchEmailAutomation:', e);
+        } finally {
+            setAutomationLoading(false);
+        }
+    }, []);
+
     const handleGenerateLabel = useCallback(async (order) => {
         setLabelLoading(prev => ({ ...prev, [order.id]: true }));
         try {
@@ -201,8 +224,9 @@ const Admin = () => {
         if (activeTab === 'emails') {
             fetchEmailLogs();
             fetchSubscribers();
+            fetchEmailAutomation();
         }
-    }, [activeTab, fetchEmailLogs, fetchSubscribers]);
+    }, [activeTab, fetchEmailLogs, fetchSubscribers, fetchEmailAutomation]);
 
     const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' && window.innerWidth < MOBILE_BP);
 
@@ -490,6 +514,8 @@ const Admin = () => {
                                 {[
                                     { id: 'sent', label: 'Sent Log' },
                                     { id: 'compose', label: 'Compose' },
+                                    { id: 'automation', label: 'Automation' },
+                                    { id: 'newsletter', label: 'Newsletter Blast' },
                                     { id: 'templates', label: 'Templates' },
                                     { id: 'subscribers', label: 'Subscribers' },
                                 ].map(sub => (
@@ -651,6 +677,128 @@ const Admin = () => {
                                         >
                                             {composeSending ? 'Sending…' : 'Send Email'}
                                         </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Automation */}
+                            {emailSubTab === 'automation' && (
+                                <div style={{ ...sec, maxWidth: 720 }}>
+                                    <h3 style={st.sectionTitle}>Automated Emails</h3>
+                                    <p style={{ fontSize: 13, color: t.textMuted, margin: '0 0 20px' }}>
+                                        Control when welcome and nudge emails are sent. Nudge runs via cron (e.g. Vercel Cron) calling <code style={{ background: t.surfaceAlt, padding: '2px 6px', borderRadius: 4 }}>GET /api/send-nudges</code> with <code style={{ background: t.surfaceAlt, padding: '2px 6px', borderRadius: 4 }}>x-cron-secret</code> or <code style={{ background: t.surfaceAlt, padding: '2px 6px', borderRadius: 4 }}>Authorization: Bearer CRON_SECRET</code>.
+                                    </p>
+                                    {automationLoading ? (
+                                        <p style={{ color: t.textMuted }}>Loading…</p>
+                                    ) : (
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                                                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                                                    <input type="checkbox" checked={automationSettings.welcome_enabled !== 'false'} onChange={async e => {
+                                                        const v = e.target.checked ? 'true' : 'false';
+                                                        try { await emailsService.updateEmailAutomation('welcome_enabled', v); setAutomationSettings(s => ({ ...s, welcome_enabled: v })); } catch (err) { alert(err?.message); }
+                                                    }} />
+                                                    <span style={{ fontWeight: 600, color: t.text }}>Send welcome email after sign-up</span>
+                                                </label>
+                                            </div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                                                <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }}>
+                                                    <input type="checkbox" checked={automationSettings.nudge_enabled !== 'false'} onChange={async e => {
+                                                        const v = e.target.checked ? 'true' : 'false';
+                                                        try { await emailsService.updateEmailAutomation('nudge_enabled', v); setAutomationSettings(s => ({ ...s, nudge_enabled: v })); } catch (err) { alert(err?.message); }
+                                                    }} />
+                                                    <span style={{ fontWeight: 600, color: t.text }}>Send cart reminder nudge (after delay)</span>
+                                                </label>
+                                            </div>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                                <label style={{ fontWeight: 600, color: t.text }}>Nudge delay (hours):</label>
+                                                <select value={automationSettings.nudge_delay_hours ?? '24'} onChange={async e => {
+                                                    const v = e.target.value;
+                                                    try { await emailsService.updateEmailAutomation('nudge_delay_hours', v); setAutomationSettings(s => ({ ...s, nudge_delay_hours: v })); } catch (err) { alert(err?.message); }
+                                                }} style={{ ...inp(), width: 80 }}>
+                                                    {[12, 24, 48, 72].map(h => <option key={h} value={String(h)}>{h}h</option>)}
+                                                </select>
+                                            </div>
+                                        </div>
+                                    )}
+                                    <h4 style={{ marginTop: 28, marginBottom: 12, fontSize: 14, fontWeight: 800, color: t.text }}>Recent automated emails</h4>
+                                    <div style={{ overflowX: 'auto' }}>
+                                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                            <thead>
+                                                <tr>
+                                                    {['To', 'Type', 'Subject', 'Sent'].map(h => <th key={h} style={{ ...st.th, borderColor: t.border, color: t.textMuted }}>{h}</th>)}
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {emailLogs.filter(log => ['welcome', 'nudge', 'newsletter'].includes(log.type)).slice(0, 30).map(log => (
+                                                    <tr key={log.id} style={{ borderBottom: `1px solid ${t.border}` }}>
+                                                        <td style={st.td}>{log.to}</td>
+                                                        <td style={st.td}><span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', padding: '2px 8px', borderRadius: 5, background: t.tagBg, color: t.primary }}>{log.type}</span></td>
+                                                        <td style={{ ...st.td, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{log.subject}</td>
+                                                        <td style={{ ...st.td, color: t.textMuted, whiteSpace: 'nowrap' }}>{new Date(log.created_at).toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'short' })}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                        {emailLogs.filter(log => ['welcome', 'nudge', 'newsletter'].includes(log.type)).length === 0 && (
+                                            <p style={{ color: t.textMuted, fontSize: 13, padding: 16 }}>No automated emails yet.</p>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Newsletter Blast */}
+                            {emailSubTab === 'newsletter' && (
+                                <div style={{ ...sec, maxWidth: 680 }}>
+                                    <h3 style={st.sectionTitle}>Send Newsletter to All Subscribers</h3>
+                                    <p style={{ fontSize: 13, color: t.textMuted, margin: '0 0 20px' }}>
+                                        {subscribers.filter(s => !s.unsubscribed_at).length} active subscriber(s). Compose below and send to everyone.
+                                    </p>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                                        <div>
+                                            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: t.textMuted, marginBottom: 6 }}>Subject</label>
+                                            <input type="text" value={newsletterSubject} onChange={e => setNewsletterSubject(e.target.value)} placeholder="New Drop — The Knight Edition" style={{ ...inp(), width: '100%' }} />
+                                        </div>
+                                        <div>
+                                            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: t.textMuted, marginBottom: 6 }}>Headline</label>
+                                            <input type="text" value={newsletterHeadline} onChange={e => setNewsletterHeadline(e.target.value)} placeholder="New Drop Just Landed" style={{ ...inp(), width: '100%' }} />
+                                        </div>
+                                        <div>
+                                            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: t.textMuted, marginBottom: 6 }}>Body (HTML)</label>
+                                            <textarea value={newsletterBody} onChange={e => setNewsletterBody(e.target.value)} rows={6} placeholder="<p>We just released...</p>" style={{ ...inp(), width: '100%', fontFamily: 'monospace', fontSize: 13 }} />
+                                        </div>
+                                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                                            <div>
+                                                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: t.textMuted, marginBottom: 6 }}>CTA text</label>
+                                                <input type="text" value={newsletterCtaText} onChange={e => setNewsletterCtaText(e.target.value)} placeholder="Shop Now" style={{ ...inp() }} />
+                                            </div>
+                                            <div>
+                                                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: t.textMuted, marginBottom: 6 }}>CTA URL</label>
+                                                <input type="text" value={newsletterCtaUrl} onChange={e => setNewsletterCtaUrl(e.target.value)} placeholder="https://www.stakdcards.com/products" style={{ ...inp() }} />
+                                            </div>
+                                        </div>
+                                        {newsletterFeedback && <div style={{ fontSize: 13, fontWeight: 600, color: newsletterFeedback.startsWith('✓') ? '#22c55e' : '#ef4444' }}>{newsletterFeedback}</div>}
+                                        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                                            <button type="button" disabled={newsletterSending || !newsletterSubject || !newsletterHeadline || subscribers.filter(s => !s.unsubscribed_at).length === 0} onClick={async () => {
+                                                if (!window.confirm(`Send to ${subscribers.filter(s => !s.unsubscribed_at).length} subscribers?`)) return;
+                                                setNewsletterSending(true); setNewsletterFeedback('');
+                                                try {
+                                                    const token = session?.access_token;
+                                                    if (!token) { setNewsletterFeedback('You must be signed in.'); return; }
+                                                    const res = await fetch('/api/send-newsletter-blast', {
+                                                        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                                                        body: JSON.stringify({ subject: newsletterSubject, headline: newsletterHeadline, bodyHtml: newsletterBody, ctaText: newsletterCtaText || undefined, ctaUrl: newsletterCtaUrl || undefined }),
+                                                    });
+                                                    const data = await res.json().catch(() => ({}));
+                                                    if (res.ok) setNewsletterFeedback(`✓ Sent to ${data.sent}/${data.total} subscribers.`);
+                                                    else setNewsletterFeedback(data.error || 'Failed to send.');
+                                                    if (res.ok) fetchEmailLogs();
+                                                } catch (err) { setNewsletterFeedback(err?.message || 'Network error'); }
+                                                setNewsletterSending(false);
+                                            }} style={{ padding: '11px 24px', borderRadius: 8, border: 'none', background: t.primary, color: '#fff', fontWeight: 700, fontSize: 14, cursor: newsletterSending ? 'wait' : 'pointer', opacity: newsletterSending ? 0.7 : 1 }}>
+                                                {newsletterSending ? 'Sending…' : 'Send to all subscribers'}
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             )}
@@ -1834,9 +1982,16 @@ const TEMPLATE_DEFS = [
     {
         id: 'welcome',
         label: 'Welcome Email',
-        description: 'Sent to new account holders after sign-up.',
+        description: 'Sent automatically after sign-up (if enabled in Automation).',
         build: () => welcomeEmail({ name: 'Jane' }),
         subject: 'Welcome to STAKD Cards',
+    },
+    {
+        id: 'nudge',
+        label: 'Cart Reminder (Nudge)',
+        description: 'Sent to users who requested a reminder (after delay, via cron).',
+        build: () => nudgeEmail({ name: 'Jane', items: [{ name: 'The Knight', quantity: 1, price: 59.99 }], cartUrl: 'https://www.stakdcards.com/cart' }),
+        subject: 'Your cart is waiting — STAKD Cards',
     },
     {
         id: 'newsletter',

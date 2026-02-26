@@ -3,7 +3,7 @@ import { Resend } from 'resend';
 
 const BASE_URL = 'https://www.stakdcards.com';
 
-const EMAIL_FOOTER = `STAKD Cards &bull; Handmade with care<br/>
+const EMAIL_FOOTER = `STAKD Cards<br/>
 <a href="${BASE_URL}/products" style="color:#6b7280;text-decoration:none;">Shop</a> &bull;
 <a href="${BASE_URL}/cart" style="color:#6b7280;text-decoration:none;">Cart</a> &bull;
 <a href="${BASE_URL}/about" style="color:#6b7280;text-decoration:none;">About</a> &bull;

@@ -36,7 +36,7 @@ function emailFooter(includeUnsubscribe = false) {
     ];
     if (includeUnsubscribe) links.push({ label: 'Unsubscribe', href: `${BASE_URL}/unsubscribe` });
     const linkHtml = links.map(l => `<a href="${l.href}" style="color:${BRAND.footer};text-decoration:none;">${l.label}</a>`).join(' &bull; ');
-    return `STAKD Cards &bull; Handmade with care<br/>${linkHtml}<br/><a href="mailto:hello@stakdcards.com" style="color:${BRAND.footer};text-decoration:none;">hello@stakdcards.com</a>`;
+    return `STAKD Cards<br/>${linkHtml}<br/><a href="mailto:hello@stakdcards.com" style="color:${BRAND.footer};text-decoration:none;">hello@stakdcards.com</a>`;
 }
 
 function wrapper(title, body, includeUnsubscribe = false) {

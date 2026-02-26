@@ -38,6 +38,8 @@ const NAV_LINKS = [
     { label: 'Shop', to: '/products' },
     { label: 'Gallery', to: '/gallery' },
     { label: 'About', to: '/about' },
+    { label: 'Contact', to: '/contact' },
+    { label: 'FAQ', to: '/faq' },
     { label: 'Cart', to: '/cart' },
 ];
 
@@ -57,46 +59,55 @@ const Footer = () => {
                 maxWidth: 1180, margin: '0 auto',
                 padding: isMobile ? '28px 20px' : 'clamp(28px, 4vw, 44px) 24px',
                 display: 'flex',
-                flexDirection: isMobile ? 'column' : 'row',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                gap: isMobile ? 20 : 24,
+                flexDirection: 'column',
+                gap: isMobile ? 20 : 0,
                 textAlign: isMobile ? 'center' : 'left',
             }}>
-                <img
-                    src="/stakd-wordmark-offwhite.png"
-                    alt="STAKD"
-                    style={{ height: 18, width: 'auto', opacity: 0.7 }}
-                />
-                <div style={{ display: 'flex', gap: isMobile ? 20 : 24, flexWrap: 'wrap', justifyContent: 'center' }}>
-                    {NAV_LINKS.map(l => (
-                        <Link key={l.to} to={l.to} className="stakd-footer-link" style={{ fontSize: 13, color: t.textMuted, textDecoration: 'none', fontWeight: 600 }}>
-                            {l.label}
-                        </Link>
-                    ))}
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: isMobile ? 'center' : 'flex-end', gap: 10 }}>
-                    <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-                        {SOCIAL_LINKS.map(s => (
-                            <a
-                                key={s.label}
-                                href={s.href}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                aria-label={s.label}
-                                className="stakd-social-icon"
-                                style={{ color: t.textMuted, display: 'flex', alignItems: 'center' }}
-                                onMouseEnter={e => { e.currentTarget.style.color = t.primary; }}
-                                onMouseLeave={e => { e.currentTarget.style.color = t.textMuted; }}
-                            >
-                                {s.icon}
-                            </a>
-                        ))}
+                {isMobile ? (
+                    <>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+                            <img src="/stakd-wordmark-offwhite.png" alt="STAKD" style={{ height: 18, width: 'auto', opacity: 0.7 }} />
+                            <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+                                {SOCIAL_LINKS.map(s => (
+                                    <a key={s.label} href={s.href} target="_blank" rel="noopener noreferrer" aria-label={s.label} className="stakd-social-icon"
+                                        style={{ color: t.textMuted, display: 'flex', alignItems: 'center' }}
+                                        onMouseEnter={e => { e.currentTarget.style.color = t.primary; }}
+                                        onMouseLeave={e => { e.currentTarget.style.color = t.textMuted; }}>
+                                        {s.icon}
+                                    </a>
+                                ))}
+                            </div>
+                        </div>
+                        <div style={{ display: 'flex', gap: 20, flexWrap: 'wrap', justifyContent: 'center' }}>
+                            {NAV_LINKS.map(l => (
+                                <Link key={l.to} to={l.to} className="stakd-footer-link" style={{ fontSize: 13, color: t.textMuted, textDecoration: 'none', fontWeight: 600 }}>{l.label}</Link>
+                            ))}
+                        </div>
+                        <div style={{ fontSize: 11, color: t.textFaint }}>© {new Date().getFullYear()} STAKD · stakdcards.com</div>
+                    </>
+                ) : (
+                    <div style={{ display: 'flex', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 24 }}>
+                        <img src="/stakd-wordmark-offwhite.png" alt="STAKD" style={{ height: 18, width: 'auto', opacity: 0.7 }} />
+                        <div style={{ display: 'flex', gap: 24, flexWrap: 'wrap', justifyContent: 'center' }}>
+                            {NAV_LINKS.map(l => (
+                                <Link key={l.to} to={l.to} className="stakd-footer-link" style={{ fontSize: 13, color: t.textMuted, textDecoration: 'none', fontWeight: 600 }}>{l.label}</Link>
+                            ))}
+                        </div>
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 10 }}>
+                            <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+                                {SOCIAL_LINKS.map(s => (
+                                    <a key={s.label} href={s.href} target="_blank" rel="noopener noreferrer" aria-label={s.label} className="stakd-social-icon"
+                                        style={{ color: t.textMuted, display: 'flex', alignItems: 'center' }}
+                                        onMouseEnter={e => { e.currentTarget.style.color = t.primary; }}
+                                        onMouseLeave={e => { e.currentTarget.style.color = t.textMuted; }}>
+                                        {s.icon}
+                                    </a>
+                                ))}
+                            </div>
+                            <div style={{ fontSize: 11, color: t.textFaint }}>© {new Date().getFullYear()} STAKD · stakdcards.com</div>
+                        </div>
                     </div>
-                    <div style={{ fontSize: 11, color: t.textFaint }}>
-                        © {new Date().getFullYear()} STAKD · stakdcards.com
-                    </div>
-                </div>
+                )}
             </div>
         </footer>
     );

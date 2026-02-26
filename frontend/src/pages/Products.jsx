@@ -132,10 +132,14 @@ function ProductDetail({ product, onClose }) {
                             </div>
                             <p style={{ fontSize: 13, color: t.textMuted, lineHeight: 1.6, margin: '0 0 16px' }}>{product.description}</p>
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 20 }}>
-                                {[{ label: 'Dimensions', value: product.dimensions }, { label: 'Materials', value: product.materials }].map(({ label, value }) => (
+                                {[
+                                    { label: 'Dimensions', value: product.dimensions },
+                                    { label: 'Materials', value: product.materials },
+                                    { label: 'Category', value: categories.find(c => c.id === product.category)?.label },
+                                ].map(({ label, value }) => (
                                     <div key={label} style={{ display: 'flex', gap: 10, fontSize: 12 }}>
                                         <span style={{ color: t.textFaint, fontWeight: 600, minWidth: 80 }}>{label}</span>
-                                        <span style={{ color: t.textSecondary }}>{value}</span>
+                                        <span style={{ color: t.textMuted }}>{value || '—'}</span>
                                     </div>
                                 ))}
                             </div>
@@ -210,7 +214,7 @@ function ProductDetail({ product, onClose }) {
                             ].map(({ label, value }) => (
                                 <div key={label} style={{ display: 'flex', gap: 12, fontSize: 13 }}>
                                     <span style={{ color: t.textFaint, fontWeight: 600, minWidth: 80 }}>{label}</span>
-                                    <span style={{ color: t.textSecondary }}>{value}</span>
+                                    <span style={{ color: t.textMuted }}>{value || '—'}</span>
                                 </div>
                             ))}
                         </div>

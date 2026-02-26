@@ -11,6 +11,8 @@ import Gallery from './pages/Gallery';
 import Cart from './pages/Cart';
 import CheckoutSuccess from './pages/CheckoutSuccess';
 import About from './pages/About';
+import Contact from './pages/Contact';
+import FAQ from './pages/FAQ';
 import Admin from './pages/Admin';
 import Login from './pages/Login';
 import Account from './pages/Account';
@@ -29,6 +31,8 @@ function App() {
                             <Route path="/cart"     element={<Cart />} />
                             <Route path="/checkout/success" element={<CheckoutSuccess />} />
                             <Route path="/about"    element={<About />} />
+                            <Route path="/contact"  element={<Contact />} />
+                            <Route path="/faq"      element={<FAQ />} />
                             <Route path="/login"    element={<Login />} />
                             <Route path="/account"  element={<AccountRoute><Account /></AccountRoute>} />
                             <Route path="/admin"    element={<AdminRoute><Admin /></AdminRoute>} />

@@ -1,6 +1,6 @@
 # STAKD Cards — Supabase Email Templates
 
-All auth and security emails use the same STAKD styling (dark theme, indigo header, system fonts) so they feel cohesive with the site.
+All auth and security emails use the same STAKD styling (light theme: gray background, white card, indigo header) so they match app-sent emails and work well in all clients.
 
 ## How to use
 
@@ -37,11 +37,10 @@ Under **Authentication** → **Notifications** (or similar), you can enable and 
 | MFA method added          | `notification-mfa-added.html`        | New sign-in step added — STAKD      |
 | MFA method removed        | `notification-mfa-removed.html`      | Sign-in step removed — STAKD        |
 
-## Design tokens (matches site)
+## Design tokens (light theme)
 
-- Background: `#0D0E11`
-- Card: `#191B20`, border `#2C303A`
+- Background: `#e5e7eb`, card: `#ffffff`, border: `#e5e7eb`
 - Header: `#2A2A69` (indigo)
 - Button: `#434EA1`
-- Text: `#F3F1E4`, muted `#BEBBAC`, faint `#898675`
-- Font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif
+- Text: `#1f2937`, muted: `#4b5563` / `#6b7280`
+- Footer includes: Shop, Cart, About, Contact, FAQ, Terms, Privacy, hello@stakdcards.com

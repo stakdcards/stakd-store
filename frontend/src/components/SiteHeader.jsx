@@ -5,9 +5,11 @@ import { useCart } from '../contexts/CartContext';
 import { useAuth } from '../contexts/AuthContext';
 
 const NAV_LINKS = [
-    { label: 'Shop',  to: '/products' },
+    { label: 'Shop', to: '/products' },
     { label: 'Gallery', to: '/gallery' },
     { label: 'About', to: '/about' },
+    { label: 'Contact', to: '/contact' },
+    { label: 'FAQ', to: '/faq' },
 ];
 
 const CART_BADGE_RED = '#C41E3A';
@@ -40,6 +42,12 @@ const CloseIcon = () => (
     </svg>
 );
 
+const ABOUT_DROPDOWN_LINKS = [
+    { label: 'About', to: '/about' },
+    { label: 'Contact', to: '/contact' },
+    { label: 'FAQ', to: '/faq' },
+];
+
 const SiteHeader = () => {
     const { t } = useDarkMode();
     const { cartCount } = useCart();
@@ -47,6 +55,7 @@ const SiteHeader = () => {
     const firstName = profile?.name?.split(/\s+/)[0] || user?.user_metadata?.full_name?.split(/\s+/)[0] || user?.user_metadata?.name?.split(/\s+/)[0] || null;
     const location = useLocation();
     const [menuOpen, setMenuOpen] = useState(false);
+    const [aboutOpen, setAboutOpen] = useState(false);
     const [scrolled, setScrolled] = useState(false);
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
@@ -99,21 +108,54 @@ const SiteHeader = () => {
                     />
                 </NavLink>
 
-                {/* Desktop nav — centered */}
+                {/* Desktop nav — centered: Shop, Gallery, About dropdown */}
                 {!isMobile && (
                     <nav style={{ display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'center' }}>
-                        {NAV_LINKS.map(l => (
-                            <NavLink key={l.to} to={l.to} className="stakd-nav-link" style={({ isActive }) => ({
-                                padding: '7px 16px', borderRadius: 8,
-                                fontSize: 14, fontWeight: 600, letterSpacing: 0.3,
-                                textDecoration: 'none',
-                                color: isActive ? t.primary : t.textMuted,
-                                background: 'transparent',
-                                transition: 'color .2s',
-                            })}>
-                                {l.label}
-                            </NavLink>
-                        ))}
+                        <NavLink to="/products" className="stakd-nav-link" style={({ isActive }) => ({
+                            padding: '7px 16px', borderRadius: 8, fontSize: 14, fontWeight: 600, letterSpacing: 0.3,
+                            textDecoration: 'none', color: isActive ? t.primary : t.textMuted, background: 'transparent', transition: 'color .2s',
+                        })}>Shop</NavLink>
+                        <NavLink to="/gallery" className="stakd-nav-link" style={({ isActive }) => ({
+                            padding: '7px 16px', borderRadius: 8, fontSize: 14, fontWeight: 600, letterSpacing: 0.3,
+                            textDecoration: 'none', color: isActive ? t.primary : t.textMuted, background: 'transparent', transition: 'color .2s',
+                        })}>Gallery</NavLink>
+                        <div style={{ position: 'relative' }}>
+                            <button
+                                type="button"
+                                onClick={() => setAboutOpen(o => !o)}
+                                onBlur={() => setTimeout(() => setAboutOpen(false), 150)}
+                                style={{
+                                    padding: '7px 16px', borderRadius: 8, fontSize: 14, fontWeight: 600, letterSpacing: 0.3,
+                                    border: 'none', background: 'transparent', cursor: 'pointer',
+                                    color: ABOUT_DROPDOWN_LINKS.some(l => location.pathname === l.to) ? t.primary : t.textMuted,
+                                    display: 'flex', alignItems: 'center', gap: 4,
+                                }}
+                            >
+                                About
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ transform: aboutOpen ? 'rotate(180deg)' : 'none', transition: 'transform .2s' }}>
+                                    <path d="M6 9l6 6 6-6"/>
+                                </svg>
+                            </button>
+                            {aboutOpen && (
+                                <div style={{
+                                    position: 'absolute', top: '100%', left: 0, marginTop: 4,
+                                    minWidth: 140, padding: 6, background: t.surface, border: `1px solid ${t.border}`,
+                                    borderRadius: 10, boxShadow: '0 12px 32px rgba(0,0,0,0.2)',
+                                    zIndex: 100,
+                                }}>
+                                    {ABOUT_DROPDOWN_LINKS.map(l => (
+                                        <Link key={l.to} to={l.to} onClick={() => setAboutOpen(false)} style={{
+                                            display: 'block', padding: '10px 14px', borderRadius: 6,
+                                            fontSize: 14, fontWeight: 600, textDecoration: 'none',
+                                            color: location.pathname === l.to ? t.primary : t.text,
+                                            background: location.pathname === l.to ? t.tagBg : 'transparent',
+                                        }}>
+                                            {l.label}
+                                        </Link>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
                     </nav>
                 )}
 

@@ -41,6 +41,9 @@ function jsonResponse(body, status = 200) {
 }
 
 export async function GET(request) {
+  const url = new URL(request.url || '', 'https://www.stakdcards.com');
+  const isDebug = url.searchParams.get('debug') === '1';
+
   try {
     const secret = request.headers.get('Authorization')?.replace(/^Bearer\s+/i, '')?.trim()
       || request.headers.get('x-cron-secret');
@@ -49,17 +52,50 @@ export async function GET(request) {
       return jsonResponse({ error: 'Unauthorized' }, 401);
     }
 
-    const url = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
-    const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     const resendKey = process.env.RESEND_API_KEY;
-    if (!url || !key) {
+
+    if (isDebug) {
+      const diag = {
+        debug: true,
+        env: {
+          hasSupabaseUrl: !!supabaseUrl,
+          hasSupabaseKey: !!supabaseKey,
+          hasResendKey: !!resendKey,
+          hasCronSecret: !!cronSecret,
+        },
+      };
+      if (!supabaseUrl || !supabaseKey) {
+        return jsonResponse({ ...diag, error: 'Missing Supabase URL or SUPABASE_SERVICE_ROLE_KEY' }, 200);
+      }
+      if (!resendKey) {
+        return jsonResponse({ ...diag, error: 'Missing RESEND_API_KEY' }, 200);
+      }
+      try {
+        const supabase = createClient(supabaseUrl, supabaseKey);
+        const { data: settings, error: settingsError } = await supabase.from('email_automation').select('key, value').in('key', ['nudge_enabled', 'nudge_delay_hours']);
+        if (settingsError) {
+          return jsonResponse({ ...diag, error: 'email_automation query failed', detail: settingsError.message, code: settingsError.code }, 200);
+        }
+        const { error: rowsError } = await supabase.from('abandoned_cart_reminders').select('id').limit(1);
+        if (rowsError) {
+          return jsonResponse({ ...diag, error: 'abandoned_cart_reminders query failed', detail: rowsError.message, code: rowsError.code }, 200);
+        }
+        return jsonResponse({ ...diag, ok: true, message: 'Env and DB OK. Remove ?debug=1 to run nudge send.' }, 200);
+      } catch (dbErr) {
+        return jsonResponse({ ...diag, error: 'Exception during DB check', detail: dbErr.message }, 200);
+      }
+    }
+
+    if (!supabaseUrl || !supabaseKey) {
       return jsonResponse({ error: 'Server configuration error: missing Supabase URL or SUPABASE_SERVICE_ROLE_KEY' }, 500);
     }
     if (!resendKey) {
       return jsonResponse({ error: 'Server configuration error: missing RESEND_API_KEY' }, 500);
     }
 
-    const supabase = createClient(url, key);
+    const supabase = createClient(supabaseUrl, supabaseKey);
     const { data: settings, error: settingsError } = await supabase.from('email_automation').select('key, value').in('key', ['nudge_enabled', 'nudge_delay_hours']);
     if (settingsError) {
       console.error('send-nudges email_automation error:', settingsError);

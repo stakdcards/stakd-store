@@ -14,6 +14,7 @@ const MOBILE_BP = 768;
 
 const TABS = [
     { id: 'dashboard', label: 'Dashboard' },
+    { id: 'analytics', label: 'Analytics' },
     { id: 'listings', label: 'Listings & Availability' },
     { id: 'customers', label: 'Customers' },
     { id: 'orders', label: 'Orders & Fulfillment' },
@@ -306,6 +307,18 @@ const Admin = () => {
                             st={st}
                             setActiveTab={setActiveTab}
                             setSelectedOrderId={setSelectedOrderId}
+                        />
+                    )}
+
+                    {/* ═══════ ANALYTICS ═══════ */}
+                    {activeTab === 'analytics' && (
+                        <AdminAnalytics
+                            orders={orders}
+                            ordersLoading={ordersLoading}
+                            isMobile={isMobile}
+                            t={t}
+                            sec={sec}
+                            st={st}
                         />
                     )}
 
@@ -1248,6 +1261,291 @@ const st = {
     th: { padding: '14px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '2px solid' },
     td: { padding: '14px 16px', fontSize: 14, borderBottom: '1px solid' },
 };
+
+// ──────────────────────────────────────────────────────────────
+// Admin Analytics Component (advanced user/sales analytics)
+// ──────────────────────────────────────────────────────────────
+const ANALYTICS_RANGES = [
+    { days: 7, label: 'Last 7 days' },
+    { days: 30, label: 'Last 30 days' },
+    { days: 90, label: 'Last 90 days' },
+];
+
+function RevenueChart({ orders, days, t }) {
+    if (!orders.length) return <p style={{ color: t.textMuted, fontSize: 13, padding: '24px 0' }}>No data in this period.</p>;
+    const now = Date.now();
+    const start = now - days * 86400000;
+    const numBuckets = Math.min(days, 60);
+    const buckets = Array.from({ length: numBuckets }, (_, i) => {
+        const bucketStart = start + (i / numBuckets) * (days * 86400000);
+        const d = new Date(bucketStart);
+        return { label: d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }), revenue: 0 };
+    });
+    orders.forEach(o => {
+        const orderTime = new Date(o.created_at).getTime();
+        if (orderTime < start) return;
+        const bucketIdx = Math.min(numBuckets - 1, Math.floor(((orderTime - start) / (days * 86400000)) * numBuckets));
+        buckets[bucketIdx].revenue += o.total ?? 0;
+    });
+    const maxRev = Math.max(...buckets.map(b => b.revenue), 1);
+    const W = 600;
+    const H = 120;
+    const PAD = 8;
+    const pts = buckets.map((b, i) => {
+        const x = PAD + (i / (buckets.length - 1 || 1)) * (W - PAD * 2);
+        const y = H - PAD - (b.revenue / maxRev) * (H - PAD * 2);
+        return `${x},${y}`;
+    }).join(' ');
+
+    return (
+        <div style={{ width: '100%', overflow: 'auto' }}>
+            <svg viewBox={`0 0 ${W} ${H}`} style={{ minWidth: 320, width: '100%', height: 120 }} preserveAspectRatio="xMidYMid meet">
+                <defs>
+                    <linearGradient id="analyticsRevGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#22c55e" stopOpacity="0.35" />
+                        <stop offset="100%" stopColor="#22c55e" stopOpacity="0" />
+                    </linearGradient>
+                </defs>
+                <polygon points={`${PAD},${H} ${pts} ${W - PAD},${H}`} fill="url(#analyticsRevGrad)" />
+                <polyline points={pts} fill="none" stroke="#22c55e" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+            </svg>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6, padding: '0 4px', fontSize: 10, color: t.textFaint }}>
+                <span>{buckets[0]?.label}</span>
+                <span>{buckets[buckets.length - 1]?.label}</span>
+            </div>
+        </div>
+    );
+}
+
+function AdminAnalytics({ orders, ordersLoading, isMobile, t, sec, st }) {
+    const [rangeDays, setRangeDays] = useState(30);
+
+    const rangeStart = Date.now() - rangeDays * 86400000;
+    const periodOrders = orders.filter(o => new Date(o.created_at).getTime() >= rangeStart);
+    const periodRevenue = periodOrders.reduce((s, o) => s + (o.total ?? 0), 0);
+    const aov = periodOrders.length > 0 ? periodRevenue / periodOrders.length : 0;
+
+    const byEmail = {};
+    orders.forEach(o => {
+        const email = (o.email || '').trim().toLowerCase() || '—';
+        const name = [o.first_name, o.last_name].filter(Boolean).join(' ') || o.name || 'Unknown';
+        if (!byEmail[email]) byEmail[email] = { email, name, orders: [], total: 0 };
+        byEmail[email].orders.push(o);
+        byEmail[email].total += o.total ?? 0;
+    });
+    const allCustomers = Object.values(byEmail).filter(c => c.email !== '—');
+    const periodCustomerEmails = new Set(periodOrders.map(o => (o.email || '').trim().toLowerCase()));
+    const newInPeriod = allCustomers.filter(c => {
+        const firstOrder = c.orders.sort((a, b) => new Date(a.created_at) - new Date(b.created_at))[0];
+        return firstOrder && new Date(firstOrder.created_at).getTime() >= rangeStart;
+    }).length;
+    const returningInPeriod = periodCustomerEmails.size - newInPeriod;
+
+    const ordersPerCustomer = {};
+    allCustomers.forEach(c => {
+        const count = c.orders.length;
+        ordersPerCustomer[count] = (ordersPerCustomer[count] || 0) + 1;
+    });
+    const repeatRate = periodOrders.length > 0
+        ? (periodOrders.filter(o => (byEmail[(o.email || '').trim().toLowerCase()]?.orders.length ?? 0) >= 2).length / periodOrders.length) * 100
+        : 0;
+
+    const productStats = {};
+    periodOrders.forEach(o => {
+        (o.order_items || []).forEach(item => {
+            const id = item.product_id || 'unknown';
+            const name = item.products?.name || id;
+            if (!productStats[id]) productStats[id] = { id, name, units: 0, revenue: 0 };
+            productStats[id].units += item.quantity || 0;
+            productStats[id].revenue += (item.quantity || 0) * (item.price_at_time || 0);
+        });
+    });
+    const topProductsByUnits = Object.values(productStats).sort((a, b) => b.units - a.units).slice(0, 10);
+    const topProductsByRevenue = Object.values(productStats).sort((a, b) => b.revenue - a.revenue).slice(0, 10);
+
+    const topCustomersPeriod = allCustomers
+        .map(c => ({
+            ...c,
+            periodRevenue: c.orders.filter(o => new Date(o.created_at).getTime() >= rangeStart).reduce((s, o) => s + (o.total ?? 0), 0),
+            periodOrders: c.orders.filter(o => new Date(o.created_at).getTime() >= rangeStart).length,
+        }))
+        .filter(c => c.periodOrders > 0)
+        .sort((a, b) => b.periodRevenue - a.periodRevenue)
+        .slice(0, 10);
+
+    const stateCounts = {};
+    periodOrders.forEach(o => {
+        const st = (o.state || '').trim() || '—';
+        stateCounts[st] = (stateCounts[st] || 0) + 1;
+    });
+    const topStates = Object.entries(stateCounts).sort((a, b) => b[1] - a[1]).slice(0, 8);
+
+    if (ordersLoading) {
+        return <div style={{ ...sec, textAlign: 'center', color: t.textMuted, padding: 48 }}>Loading analytics…</div>;
+    }
+
+    return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
+                <h3 style={{ ...st.sectionTitle, margin: 0, fontSize: 14 }}>User & Sales Analytics</h3>
+                <div style={{ display: 'flex', gap: 8 }}>
+                    {ANALYTICS_RANGES.map(({ days, label }) => (
+                        <button
+                            key={days}
+                            type="button"
+                            onClick={() => setRangeDays(days)}
+                            style={{
+                                padding: '8px 14px', borderRadius: 8, border: `1px solid ${rangeDays === days ? t.primary : t.border}`,
+                                background: rangeDays === days ? `${t.primary}18` : t.surfaceAlt,
+                                color: rangeDays === days ? t.primary : t.textMuted,
+                                fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                            }}
+                        >
+                            {label}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            {/* KPI cards */}
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, 1fr)', gap: 12 }}>
+                {[
+                    { val: `$${periodRevenue.toFixed(2)}`, label: 'Revenue', sub: `in selected period`, color: '#22c55e' },
+                    { val: periodOrders.length, label: 'Orders', sub: `in selected period`, color: t.primary },
+                    { val: `$${aov.toFixed(2)}`, label: 'AOV', sub: 'average order value', color: '#a855f7' },
+                    { val: periodCustomerEmails.size, label: 'Customers', sub: 'unique in period', color: '#3b82f6' },
+                    { val: newInPeriod, label: 'New', sub: 'first order in period', color: '#06b6d4' },
+                    { val: returningInPeriod, label: 'Returning', sub: 'had order before', color: '#f59e0b' },
+                    { val: `${repeatRate.toFixed(1)}%`, label: 'Repeat rate', sub: 'orders from 2+ order customers', color: '#ec4899' },
+                ].map(({ val, label, sub, color }) => (
+                    <div key={label} style={{ ...st.statCard, padding: isMobile ? 12 : 16, background: t.surface, borderColor: t.border, borderLeft: `3px solid ${color}` }}>
+                        <div style={{ fontSize: isMobile ? 18 : 22, fontWeight: 800, color }}>{val}</div>
+                        <div style={{ fontSize: 11, fontWeight: 600, color: t.text, marginTop: 4 }}>{label}</div>
+                        <div style={{ fontSize: 10, color: t.textFaint, marginTop: 2 }}>{sub}</div>
+                    </div>
+                ))}
+            </div>
+
+            {/* Revenue over time */}
+            <div style={{ ...sec }}>
+                <h4 style={{ fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: t.textMuted, marginBottom: 12 }}>Revenue over time</h4>
+                <RevenueChart orders={periodOrders} days={rangeDays} t={t} />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 20 }}>
+                {/* Top products by units */}
+                <div style={{ ...sec, padding: 0, overflow: 'hidden' }}>
+                    <div style={{ padding: '14px 20px', borderBottom: `1px solid ${t.border}`, fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: t.textMuted }}>Top products (units sold)</div>
+                    {topProductsByUnits.length === 0 ? (
+                        <p style={{ padding: 20, color: t.textMuted, fontSize: 13 }}>No product data in this period.</p>
+                    ) : (
+                        <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+                            {topProductsByUnits.map((p, i) => (
+                                <li key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 20px', borderBottom: `1px solid ${t.border}`, fontSize: 13 }}>
+                                    <span style={{ color: t.text, fontWeight: 600 }}>#{i + 1} {p.name}</span>
+                                    <span style={{ color: t.primary, fontWeight: 700 }}>{p.units} sold</span>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </div>
+                {/* Top products by revenue */}
+                <div style={{ ...sec, padding: 0, overflow: 'hidden' }}>
+                    <div style={{ padding: '14px 20px', borderBottom: `1px solid ${t.border}`, fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: t.textMuted }}>Top products (revenue)</div>
+                    {topProductsByRevenue.length === 0 ? (
+                        <p style={{ padding: 20, color: t.textMuted, fontSize: 13 }}>No product data in this period.</p>
+                    ) : (
+                        <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+                            {topProductsByRevenue.map((p, i) => (
+                                <li key={p.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 20px', borderBottom: `1px solid ${t.border}`, fontSize: 13 }}>
+                                    <span style={{ color: t.text, fontWeight: 600 }}>#{i + 1} {p.name}</span>
+                                    <span style={{ color: '#22c55e', fontWeight: 700 }}>${p.revenue.toFixed(2)}</span>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </div>
+            </div>
+
+            {/* Top customers in period */}
+            <div style={{ ...sec, padding: 0, overflow: 'hidden' }}>
+                <div style={{ padding: '14px 20px', borderBottom: `1px solid ${t.border}`, fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: t.textMuted }}>Top customers (in selected period)</div>
+                {topCustomersPeriod.length === 0 ? (
+                    <p style={{ padding: 20, color: t.textMuted, fontSize: 13 }}>No orders in this period.</p>
+                ) : (
+                    <div style={{ overflowX: 'auto' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                            <thead>
+                                <tr>
+                                    <th style={{ ...st.th, borderColor: t.border }}>Customer</th>
+                                    <th style={{ ...st.th, borderColor: t.border }}>Orders</th>
+                                    <th style={{ ...st.th, borderColor: t.border, textAlign: 'right' }}>Revenue</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {topCustomersPeriod.map((c, i) => (
+                                    <tr key={c.email} style={{ borderBottom: `1px solid ${t.border}` }}>
+                                        <td style={st.td}>
+                                            <div style={{ fontWeight: 600, color: t.text }}>{c.name || '—'}</div>
+                                            <div style={{ fontSize: 11, color: t.textMuted }}>{c.email}</div>
+                                        </td>
+                                        <td style={st.td}>{c.periodOrders}</td>
+                                        <td style={{ ...st.td, textAlign: 'right', fontWeight: 700, color: '#22c55e' }}>${c.periodRevenue.toFixed(2)}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+            </div>
+
+            {/* Orders by state + Customer distribution */}
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 20 }}>
+                <div style={{ ...sec, padding: 0, overflow: 'hidden' }}>
+                    <div style={{ padding: '14px 20px', borderBottom: `1px solid ${t.border}`, fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: t.textMuted }}>Orders by state</div>
+                    {topStates.length === 0 ? (
+                        <p style={{ padding: 20, color: t.textMuted, fontSize: 13 }}>No data.</p>
+                    ) : (
+                        <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+                            {topStates.map(([state, count]) => (
+                                <li key={state} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 20px', borderBottom: `1px solid ${t.border}`, fontSize: 13 }}>
+                                    <span style={{ color: t.text }}>{state}</span>
+                                    <span style={{ fontWeight: 700, color: t.primary }}>{count}</span>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </div>
+                <div style={{ ...sec, padding: 0, overflow: 'hidden' }}>
+                    <div style={{ padding: '14px 20px', borderBottom: `1px solid ${t.border}`, fontSize: 12, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: t.textMuted }}>Customer distribution (all time)</div>
+                    {allCustomers.length === 0 ? (
+                        <p style={{ padding: 20, color: t.textMuted, fontSize: 13 }}>No customers yet.</p>
+                    ) : (
+                        <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+                            {[
+                                ['1', '1 order'],
+                                ['2-3', '2–3 orders'],
+                                ['4+', '4+ orders'],
+                            ].map(([key, label]) => {
+                                const count = key === '1'
+                                    ? (ordersPerCustomer[1] || 0)
+                                    : key === '2-3'
+                                        ? (ordersPerCustomer[2] || 0) + (ordersPerCustomer[3] || 0)
+                                        : Object.entries(ordersPerCustomer).filter(([k]) => Number(k) >= 4).reduce((s, [, v]) => s + v, 0);
+                                return (
+                                    <li key={label} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 20px', borderBottom: `1px solid ${t.border}`, fontSize: 13 }}>
+                                        <span style={{ color: t.text }}>{label}</span>
+                                        <span style={{ fontWeight: 700, color: t.primary }}>{count} customers</span>
+                                    </li>
+                                );
+                            })}
+                        </ul>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+}
 
 // ──────────────────────────────────────────────────────────────
 // Admin Dashboard Component

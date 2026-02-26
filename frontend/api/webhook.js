@@ -11,23 +11,34 @@ function jsonResponse(body, status = 200) {
 }
 
 export async function POST(request) {
-  const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
-  if (!webhookSecret) {
-    console.error('STRIPE_WEBHOOK_SECRET is not set');
+  const rawBody = await request.text();
+  const sig = request.headers.get('stripe-signature');
+  if (!sig) {
+    return jsonResponse({ error: 'Missing stripe-signature header' }, 400);
+  }
+
+  const testSecret = process.env.STRIPE_WEBHOOK_SECRET_TEST;
+  const liveSecret = process.env.STRIPE_WEBHOOK_SECRET || process.env.STRIPE_WEBHOOK_SECRET_LIVE;
+  const secrets = [testSecret, liveSecret].filter(Boolean);
+  if (secrets.length === 0) {
+    console.error('No webhook secret set (STRIPE_WEBHOOK_SECRET or STRIPE_WEBHOOK_SECRET_TEST)');
     return jsonResponse({ error: 'Webhook secret not configured' }, 500);
   }
 
   let event;
-  try {
-    const rawBody = await request.text();
-    const sig = request.headers.get('stripe-signature');
-    if (!sig) {
-      return jsonResponse({ error: 'Missing stripe-signature header' }, 400);
+  let lastError;
+  for (const webhookSecret of secrets) {
+    try {
+      event = stripe.webhooks.constructEvent(rawBody, sig, webhookSecret);
+      lastError = null;
+      break;
+    } catch (err) {
+      lastError = err;
     }
-    event = stripe.webhooks.constructEvent(rawBody, sig, webhookSecret);
-  } catch (err) {
-    console.error('Webhook signature verification failed:', err.message);
-    return jsonResponse({ error: `Webhook Error: ${err.message}` }, 400);
+  }
+  if (lastError || !event) {
+    console.error('Webhook signature verification failed:', lastError?.message);
+    return jsonResponse({ error: `Webhook Error: ${lastError?.message}` }, 400);
   }
 
   if (event.type !== 'checkout.session.completed') {

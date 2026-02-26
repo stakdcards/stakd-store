@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import SiteHeader from '../components/SiteHeader';
 import Footer from '../components/Footer';
 import { ShadowboxPreview } from '../components/ShadowboxPreview';
+import { ProductDetail } from './Products';
 import { useDarkMode } from '../contexts/DarkModeContext';
 import { useCart } from '../contexts/CartContext';
 import { useProductStore } from '../contexts/ProductStoreContext';
@@ -29,72 +30,59 @@ const SHOWCASE_QUOTES = [
     },
 ];
 
-function GalleryCard({ product, large = false }) {
+function GalleryCard({ product, large = false, isMobile = false, onClick }) {
     const { t } = useDarkMode();
-    const { addToCart, isInCart } = useCart();
-    const inCart = isInCart(product.id);
+    const [hovered, setHovered] = useState(false);
+    const firstImageUrl = (product.images && product.images.length > 0 && (product.images[0].url || product.images[0].dataUrl))
+        ? (product.images[0].url || product.images[0].dataUrl)
+        : null;
+    const showOverlay = isMobile || hovered;
 
     return (
-        <div style={{
-            position: 'relative',
-            gridColumn: large ? 'span 2' : undefined,
-            gridRow: large ? 'span 2' : undefined,
-            borderRadius: 12,
-            overflow: 'hidden',
-            background: t.surface,
-            border: `1px solid ${t.border}`,
-            transition: 'transform .25s, box-shadow .25s',
-            cursor: 'pointer',
-        }}
-            onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.01)'; e.currentTarget.style.boxShadow = '0 20px 60px rgba(0,0,0,0.3)'; }}
-            onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = ''; }}
+        <button
+            type="button"
+            onClick={() => onClick(product)}
+            style={{
+                position: 'relative',
+                gridColumn: large ? 'span 2' : undefined,
+                gridRow: large ? 'span 2' : undefined,
+                borderRadius: 12,
+                overflow: 'hidden',
+                background: t.surface,
+                border: `1px solid ${t.border}`,
+                transition: 'transform .25s, box-shadow .25s',
+                cursor: 'pointer',
+                padding: 0,
+                width: '100%',
+                textAlign: 'left',
+            }}
+            onMouseEnter={e => { setHovered(true); e.currentTarget.style.transform = 'scale(1.01)'; e.currentTarget.style.boxShadow = '0 20px 60px rgba(0,0,0,0.3)'; }}
+            onMouseLeave={e => { setHovered(false); e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = ''; }}
         >
-            <ShadowboxPreview product={product} />
+            {firstImageUrl ? (
+                <div style={{ aspectRatio: '3/4', width: '100%', overflow: 'hidden', background: t.surfaceAlt }}>
+                    <img src={firstImageUrl} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                </div>
+            ) : (
+                <ShadowboxPreview product={product} showName={false} />
+            )}
 
-            {/* Hover overlay */}
-            <div className="gallery-overlay" style={{
+            {/* Overlay: name + game only. Always visible on mobile; on desktop show on hover. */}
+            <div style={{
                 position: 'absolute', inset: 0,
-                background: 'linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 60%)',
+                background: 'linear-gradient(to top, rgba(0,0,0,0.9) 0%, transparent 55%)',
                 display: 'flex', flexDirection: 'column', justifyContent: 'flex-end',
                 padding: large ? 24 : 14,
-                opacity: 0, transition: 'opacity .2s',
-            }}
-                onMouseEnter={e => e.currentTarget.style.opacity = '1'}
-                onMouseLeave={e => e.currentTarget.style.opacity = '0'}
-            >
+                opacity: showOverlay ? 1 : 0,
+                transition: 'opacity .2s',
+                pointerEvents: 'none',
+            }}>
                 <div style={{ fontSize: large ? 22 : 14, fontWeight: 900, color: '#F3F1E4', fontFamily: "'Big Shoulders Display', 'Bebas Neue', sans-serif", textTransform: 'uppercase', letterSpacing: 0.5 }}>
                     {product.name}
                 </div>
-                <div style={{ fontSize: 12, color: 'rgba(243,241,228,0.7)', marginBottom: 12 }}>{product.franchise}</div>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                    <span style={{ fontSize: 16, fontWeight: 800, color: product.accentColor }}>${product.price.toFixed(2)}</span>
-                    {product.inStock ? (
-                        <button
-                            onClick={(e) => { e.stopPropagation(); addToCart(product.id); }}
-                            style={{
-                                padding: '7px 14px', borderRadius: 7, border: 'none',
-                                background: inCart ? 'rgba(255,255,255,0.15)' : 'rgba(255,255,255,0.9)',
-                                color: inCart ? '#fff' : '#1A1C2E',
-                                fontWeight: 700, fontSize: 12, cursor: 'pointer',
-                                letterSpacing: 0.3,
-                            }}
-                        >
-                            {inCart ? 'In Cart ✓' : 'Add to Cart'}
-                        </button>
-                    ) : (
-                        <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', fontWeight: 700 }}>Sold Out</span>
-                    )}
-                    <Link to={`/products?id=${product.id}`} style={{
-                        padding: '7px 12px', borderRadius: 7, fontSize: 12, fontWeight: 600,
-                        border: '1px solid rgba(255,255,255,0.3)', color: 'rgba(255,255,255,0.8)',
-                        textDecoration: 'none',
-                    }}>
-                        Details
-                    </Link>
-                </div>
+                <div style={{ fontSize: 12, color: 'rgba(243,241,228,0.7)' }}>{product.franchise}</div>
             </div>
-
-        </div>
+        </button>
     );
 }
 
@@ -103,6 +91,7 @@ const Gallery = () => {
     const { products, categories: CATEGORIES } = useProductStore();
     const [activeFilter, setActiveFilter] = useState('all');
     const [isMobile, setIsMobile] = useState(window.innerWidth < 640);
+    const [modalProduct, setModalProduct] = useState(null);
 
     useEffect(() => {
         window.scrollTo({ top: 0, behavior: 'instant' });
@@ -119,6 +108,7 @@ const Gallery = () => {
     return (
         <div style={{ minHeight: '100vh', background: t.bg, color: t.text, display: 'flex', flexDirection: 'column' }}>
             <SiteHeader />
+            {modalProduct && <ProductDetail product={modalProduct} onClose={() => setModalProduct(null)} />}
 
             <main style={{ flex: 1 }}>
             {/* Hero */}
@@ -187,7 +177,7 @@ const Gallery = () => {
                     gap: isMobile ? 10 : 14,
                 }}>
                     {filtered.map((product, i) => (
-                        <GalleryCard key={product.id} product={product} large={!isMobile && (i === 0 || i === 7)} />
+                        <GalleryCard key={product.id} product={product} large={!isMobile && (i === 0 || i === 7)} isMobile={isMobile} onClick={setModalProduct} />
                     ))}
                 </div>
 
@@ -251,10 +241,6 @@ const Gallery = () => {
             </main>
 
             <Footer />
-
-            <style>{`
-                .gallery-overlay:hover { opacity: 1 !important; }
-            `}</style>
         </div>
     );
 };

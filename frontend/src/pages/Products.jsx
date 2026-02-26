@@ -65,13 +65,13 @@ function ProductCard({ product }) {
                         {(product.description || '').slice(0, 80)}…
                     </p>
                 )}
-                <div style={{ display: 'flex', gap: isMobile ? 6 : 8 }}>
+                <div style={{ display: 'flex', gap: isMobile ? 6 : 8, flexWrap: 'wrap', minWidth: 0 }}>
                     <button
                         disabled={!product.inStock}
                         onClick={() => { if (product.inStock && !inCart) { addToCart(product.id); track('product_added_to_cart', { product_id: product.id, name: product.name, price: product.price }); } }}
                         className={product.inStock && !inCart ? 'stakd-btn-primary' : ''}
                         style={{
-                            flex: 1, padding: isMobile ? '8px 8px' : '9px 12px', borderRadius: 8, border: 'none',
+                            flex: '1 1 auto', minWidth: isMobile ? 0 : 80, padding: isMobile ? '8px 10px' : '9px 12px', borderRadius: 8, border: 'none',
                             background: !product.inStock ? t.surfaceAlt : inCart ? t.tagBg : t.primary,
                             color: !product.inStock ? t.textFaint : inCart ? t.primary : '#fff',
                             fontWeight: 700, fontSize: isMobile ? 11 : 12,
@@ -82,9 +82,9 @@ function ProductCard({ product }) {
                         {!product.inStock ? 'Sold Out' : inCart ? 'In Cart ✓' : 'Add to Cart'}
                     </button>
                     <Link to={`?id=${product.id}`} style={{
-                        padding: isMobile ? '8px 8px' : '9px 12px', borderRadius: 8, fontSize: isMobile ? 11 : 12, fontWeight: 600,
+                        flex: '0 0 auto', padding: isMobile ? '8px 10px' : '9px 12px', borderRadius: 8, fontSize: isMobile ? 11 : 12, fontWeight: 600,
                         border: `1px solid ${t.border}`, color: t.textMuted, textDecoration: 'none',
-                        display: 'flex', alignItems: 'center',
+                        display: 'flex', alignItems: 'center', whiteSpace: 'nowrap',
                     }}>
                         Details
                     </Link>
@@ -450,4 +450,5 @@ const Products = () => {
     );
 };
 
+export { ProductDetail };
 export default Products;

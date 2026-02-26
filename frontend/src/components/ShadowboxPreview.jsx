@@ -4,7 +4,7 @@ import React from 'react';
  * CSS-rendered shadowbox card preview.
  * Simulates the physical layered shadowbox product with depth, mat board, and frame.
  */
-export const ShadowboxPreview = ({ product, minimal = false }) => {
+export const ShadowboxPreview = ({ product, minimal = false, showName = true }) => {
     const { bgColor, accentColor, palette, name, subtitle, franchise, limited, inStock } = product || {};
     const bg = bgColor || '#0d0d0d';
     const accent = accentColor || '#4a4a4a';
@@ -86,6 +86,7 @@ export const ShadowboxPreview = ({ product, minimal = false }) => {
                 }} />
 
                 {/* Name block */}
+                {showName && (
                 <div style={{
                     position: 'absolute', bottom: 0, left: 0, right: 0,
                     padding: minimal ? '16px 8px 8px' : '28px 12px 12px',
@@ -113,6 +114,7 @@ export const ShadowboxPreview = ({ product, minimal = false }) => {
                         {name}
                     </div>
                 </div>
+                )}
 
                 {/* Limited edition badge — corner seal style, top-left, no angle */}
                 {limited && !minimal && (

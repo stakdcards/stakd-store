@@ -6,6 +6,7 @@ import { useDarkMode } from '../contexts/DarkModeContext';
 import { useCart } from '../contexts/CartContext';
 import { useProductStore } from '../contexts/ProductStoreContext';
 import { ShadowboxPreview } from '../components/ShadowboxPreview';
+import { ProductDetail } from './Products';
 import { track } from '../lib/posthog';
 
 const CATEGORY_TILES = [
@@ -64,8 +65,11 @@ function AddToCartBtn({ product, style = {} }) {
     );
 }
 
-function ProductCard({ product }) {
+function ProductCard({ product, onOpenModal }) {
     const { t } = useDarkMode();
+    const firstImageUrl = (product.images && product.images.length > 0 && (product.images[0].url || product.images[0].dataUrl))
+        ? (product.images[0].url || product.images[0].dataUrl)
+        : null;
     return (
         <article style={{
             background: t.surface,
@@ -79,9 +83,15 @@ function ProductCard({ product }) {
             onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 16px 48px rgba(0,0,0,0.18)'; }}
             onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = ''; }}
         >
-            <Link to={`/products?id=${product.id}`} style={{ display: 'block', textDecoration: 'none' }}>
-                <ShadowboxPreview product={product} />
-            </Link>
+            <button type="button" onClick={() => onOpenModal(product)} style={{ display: 'block', width: '100%', padding: 0, border: 'none', background: 'none', cursor: 'pointer', textAlign: 'left' }}>
+                {firstImageUrl ? (
+                    <div style={{ aspectRatio: '3/4', overflow: 'hidden', background: t.surfaceAlt }}>
+                        <img src={firstImageUrl} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    </div>
+                ) : (
+                    <ShadowboxPreview product={product} />
+                )}
+            </button>
             <div style={{ padding: 16, flex: 1, display: 'flex', flexDirection: 'column', gap: 10 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 8 }}>
                     <div>
@@ -102,16 +112,16 @@ function ProductCard({ product }) {
                         {(product.description || '').slice(0, 90)}…
                     </p>
                 )}
-                <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
-                    <AddToCartBtn product={product} style={{ flex: 1 }} />
-                    <Link to={`/products?id=${product.id}`} style={{
+                <div style={{ display: 'flex', gap: 8, marginTop: 4, flexWrap: 'wrap' }}>
+                    <AddToCartBtn product={product} style={{ flex: 1, minWidth: 0 }} />
+                    <button type="button" onClick={() => onOpenModal(product)} style={{
                         padding: '10px 14px', borderRadius: 8,
                         border: `1px solid ${t.border}`, background: 'transparent',
-                        color: t.textMuted, fontSize: 12, fontWeight: 600, textDecoration: 'none',
-                        display: 'flex', alignItems: 'center', whiteSpace: 'nowrap',
+                        color: t.textMuted, fontSize: 12, fontWeight: 600,
+                        display: 'flex', alignItems: 'center', whiteSpace: 'nowrap', cursor: 'pointer',
                     }}>
                         Details
-                    </Link>
+                    </button>
                 </div>
             </div>
         </article>
@@ -127,6 +137,7 @@ const Landing = () => {
     const [emailError, setEmailError] = useState('');
     const [isMobile, setIsMobile] = useState(window.innerWidth < 640);
     const [isTablet, setIsTablet] = useState(window.innerWidth < 900);
+    const [modalProduct, setModalProduct] = useState(null);
 
     useEffect(() => {
         const onResize = () => {
@@ -142,6 +153,7 @@ const Landing = () => {
     return (
         <div style={{ minHeight: '100vh', background: t.bg, color: t.text, display: 'flex', flexDirection: 'column' }}>
             <SiteHeader />
+            {modalProduct && <ProductDetail product={modalProduct} onClose={() => setModalProduct(null)} />}
 
             {/* ── HERO WRAPPER — single gradient covers text + card strip ── */}
             <div style={{ background: heroBg, position: 'relative', overflow: 'hidden' }}>
@@ -230,18 +242,27 @@ const Landing = () => {
                     scrollbarWidth: 'none',
                     paddingBottom: 4,
                 }}>
-                    {FEATURED.slice(0, isMobile ? 3 : 4).map((p, i) => (
-                        <Link key={p.id} to={`/products?id=${p.id}`} style={{
-                            textDecoration: 'none', flexShrink: 0,
-                            width: isMobile ? 'clamp(100px, 28vw, 136px)' : 'clamp(130px, 15vw, 164px)',
-                            transition: 'opacity .2s',
-                        }}
-                            onMouseEnter={e => { e.currentTarget.style.opacity = '0.82'; }}
-                            onMouseLeave={e => { e.currentTarget.style.opacity = '1'; }}
-                        >
-                            <ShadowboxPreview product={p} minimal />
-                        </Link>
-                    ))}
+                    {FEATURED.slice(0, isMobile ? 3 : 4).map((p) => {
+                        const firstImg = (p.images && p.images.length > 0 && (p.images[0].url || p.images[0].dataUrl)) ? (p.images[0].url || p.images[0].dataUrl) : null;
+                        return (
+                            <button key={p.id} type="button" onClick={() => setModalProduct(p)} style={{
+                                flexShrink: 0, padding: 0, border: 'none', background: 'none', cursor: 'pointer',
+                                width: isMobile ? 'clamp(100px, 28vw, 136px)' : 'clamp(130px, 15vw, 164px)',
+                                transition: 'opacity .2s', textAlign: 'left',
+                            }}
+                                onMouseEnter={e => { e.currentTarget.style.opacity = '0.82'; }}
+                                onMouseLeave={e => { e.currentTarget.style.opacity = '1'; }}
+                            >
+                                {firstImg ? (
+                                    <div style={{ aspectRatio: '3/4', borderRadius: 8, overflow: 'hidden', background: 'rgba(0,0,0,0.2)' }}>
+                                        <img src={firstImg} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                    </div>
+                                ) : (
+                                    <ShadowboxPreview product={p} minimal />
+                                )}
+                            </button>
+                        );
+                    })}
                 </div>
             </div>
 
@@ -337,7 +358,7 @@ const Landing = () => {
                         gap: isMobile ? 10 : 18,
                     }}>
                         {FEATURED.slice(0, isMobile ? 4 : undefined).map(product => (
-                            <ProductCard key={product.id} product={product} />
+                            <ProductCard key={product.id} product={product} onOpenModal={setModalProduct} />
                         ))}
                     </div>
                 </section>

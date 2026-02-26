@@ -5,6 +5,7 @@ import Footer from '../components/Footer';
 import { ShadowboxPreview } from '../components/ShadowboxPreview';
 import { useDarkMode } from '../contexts/DarkModeContext';
 import { useCart } from '../contexts/CartContext';
+import { track } from '../lib/posthog';
 
 const SHIPPING_OPTIONS = [
     { id: 'standard', label: 'Standard Shipping (5–8 business days)', price: 0 },
@@ -108,6 +109,7 @@ const Cart = () => {
     const handleInput = (field, val) => setForm(f => ({ ...f, [field]: val }));
 
     const handleStripeCheckout = async () => {
+        track('checkout_initiated', { item_count: cartItems.length, total: cartSubtotal + tax + shippingCost });
         setStripeRedirecting(true);
         try {
             const items = cartItems.map(({ product, quantity }) => ({

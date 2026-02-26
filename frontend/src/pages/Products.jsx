@@ -6,6 +6,7 @@ import { ShadowboxPreview } from '../components/ShadowboxPreview';
 import { useDarkMode } from '../contexts/DarkModeContext';
 import { useCart } from '../contexts/CartContext';
 import { useProductStore } from '../contexts/ProductStoreContext';
+import { track } from '../lib/posthog';
 
 const SORT_OPTIONS = [
     { value: 'featured', label: 'Featured' },
@@ -58,7 +59,7 @@ function ProductCard({ product }) {
                 <div style={{ display: 'flex', gap: isMobile ? 6 : 8 }}>
                     <button
                         disabled={!product.inStock}
-                        onClick={() => product.inStock && !inCart && addToCart(product.id)}
+                        onClick={() => { if (product.inStock && !inCart) { addToCart(product.id); track('product_added_to_cart', { product_id: product.id, name: product.name, price: product.price }); } }}
                         className={product.inStock && !inCart ? 'stakd-btn-primary' : ''}
                         style={{
                             flex: 1, padding: isMobile ? '8px 8px' : '9px 12px', borderRadius: 8, border: 'none',
@@ -87,6 +88,7 @@ function ProductCard({ product }) {
 function ProductDetail({ product, onClose }) {
     const { t } = useDarkMode();
     const { addToCart, isInCart, removeFromCart } = useCart();
+    const { categories } = useProductStore();
     const inCart = isInCart(product.id);
     const isMobile = window.innerWidth < 640;
 
@@ -139,7 +141,7 @@ function ProductDetail({ product, onClose }) {
                             </div>
                             {product.inStock ? (
                                 <div style={{ display: 'flex', gap: 10 }}>
-                                    <button onClick={() => inCart ? removeFromCart(product.id) : addToCart(product.id)}
+                                    <button onClick={() => { if (inCart) { removeFromCart(product.id); } else { addToCart(product.id); track('product_added_to_cart', { product_id: product.id, name: product.name, price: product.price }); } }}
                                         style={{ flex: 1, padding: '13px 16px', borderRadius: 10, border: 'none', background: inCart ? t.tagBg : t.primary, color: inCart ? t.primary : '#fff', fontWeight: 800, fontSize: 14, cursor: 'pointer' }}>
                                         {inCart ? 'Remove from Cart' : 'Add to Cart'}
                                     </button>
@@ -204,7 +206,7 @@ function ProductDetail({ product, onClose }) {
                             {[
                                 { label: 'Dimensions', value: product.dimensions },
                                 { label: 'Materials', value: product.materials },
-                                { label: 'Category', value: CATEGORIES.find(c => c.id === product.category)?.label },
+                                { label: 'Category', value: categories.find(c => c.id === product.category)?.label },
                             ].map(({ label, value }) => (
                                 <div key={label} style={{ display: 'flex', gap: 12, fontSize: 13 }}>
                                     <span style={{ color: t.textFaint, fontWeight: 600, minWidth: 80 }}>{label}</span>

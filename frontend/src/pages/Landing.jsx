@@ -6,6 +6,7 @@ import { useDarkMode } from '../contexts/DarkModeContext';
 import { useCart } from '../contexts/CartContext';
 import { useProductStore } from '../contexts/ProductStoreContext';
 import { ShadowboxPreview } from '../components/ShadowboxPreview';
+import { track } from '../lib/posthog';
 
 const CATEGORY_TILES = [
     {
@@ -439,6 +440,7 @@ const Landing = () => {
                                         body: JSON.stringify({ email }),
                                     });
                                     if (res.ok) {
+                                        track('newsletter_subscribed', { email });
                                         setEmailSent(true);
                                     } else {
                                         const data = await res.json().catch(() => ({}));

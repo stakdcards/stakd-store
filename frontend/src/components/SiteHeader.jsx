@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useDarkMode } from '../contexts/DarkModeContext';
 import { useCart } from '../contexts/CartContext';
+import { useAuth } from '../contexts/AuthContext';
 
 const NAV_LINKS = [
     { label: 'Shop',  to: '/products' },
@@ -16,6 +17,13 @@ const CartIcon = () => (
         <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/>
         <line x1="3" y1="6" x2="21" y2="6"/>
         <path d="M16 10a4 4 0 01-8 0"/>
+    </svg>
+);
+
+const AccountIcon = () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
+        <circle cx="12" cy="7" r="4"/>
     </svg>
 );
 
@@ -35,6 +43,7 @@ const CloseIcon = () => (
 const SiteHeader = () => {
     const { t } = useDarkMode();
     const { cartCount } = useCart();
+    const { user } = useAuth();
     const location = useLocation();
     const [menuOpen, setMenuOpen] = useState(false);
     const [scrolled, setScrolled] = useState(false);
@@ -108,7 +117,22 @@ const SiteHeader = () => {
                 )}
 
                 {/* Right controls */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 4 : 6, marginLeft: 'auto', justifyContent: 'flex-end' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 2 : 4, marginLeft: 'auto', justifyContent: 'flex-end' }}>
+                    <NavLink to={user ? '/account' : '/login'} style={({ isActive }) => ({
+                        ...iconBtn,
+                        position: 'relative',
+                        color: isActive ? t.primary : t.textMuted,
+                        textDecoration: 'none',
+                    })} title={user ? 'My Account' : 'Sign In'}>
+                        <AccountIcon />
+                        {user && (
+                            <span style={{
+                                position: 'absolute', top: 4, right: 4,
+                                width: 7, height: 7, borderRadius: '50%',
+                                background: '#22c55e', border: `1.5px solid ${t.bg}`,
+                            }} />
+                        )}
+                    </NavLink>
                     <NavLink to="/cart" style={({ isActive }) => ({
                         ...iconBtn,
                         position: 'relative',

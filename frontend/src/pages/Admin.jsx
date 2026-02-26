@@ -7,6 +7,7 @@ import * as ordersService from '../services/orders';
 import * as productsService from '../services/products';
 import * as storageService from '../services/storage';
 import * as emailsService from '../services/emails';
+import { orderConfirmation, orderShipped, welcomeEmail, newsletterTemplate } from '../email-templates/index.js';
 
 const BRAND_INDIGO = '#2A2A69';
 const MOBILE_BP = 768;
@@ -294,25 +295,18 @@ const Admin = () => {
 
                     {/* ═══════ DASHBOARD ═══════ */}
                     {activeTab === 'dashboard' && (
-                        <div>
-                            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, 1fr)', gap: isMobile ? 8 : 20, marginBottom: 24 }}>
-                                {[
-                                    { val: orders.length, label: 'Total Orders', color: t.primary },
-                                    { val: orders.filter(o => o.status === 'pending').length, label: 'Pending', color: '#f59e0b' },
-                                    { val: `$${orderStats.revenue.toFixed(2)}`, label: 'Revenue', color: '#22c55e' },
-                                    { val: orders.filter(o => o.status === 'shipped').length, label: 'Shipped', color: '#22c55e' },
-                                ].map(({ val, label, color }) => (
-                                    <div key={label} style={{ ...st.statCard, padding: isMobile ? 12 : 24, background: t.surface, borderColor: t.border }}>
-                                        <div style={{ fontSize: isMobile ? 24 : 32, fontWeight: 800, color }}>{val}</div>
-                                        <div style={{ fontSize: isMobile ? 11 : 13, color: t.textMuted, marginTop: 4 }}>{label}</div>
-                                    </div>
-                                ))}
-                            </div>
-                            <div style={{ ...st.section, background: t.surface, borderColor: t.border, padding: 40, textAlign: 'center' }}>
-                                <h3 style={{ fontSize: 16, fontWeight: 700, color: t.text, marginBottom: 8 }}>Overview</h3>
-                                <p style={{ fontSize: 13, color: t.textMuted }}>Orders & fulfillment in the Orders tab. Listings & availability in Listings. Customers derived from orders.</p>
-                            </div>
-                        </div>
+                        <AdminDashboard
+                            orders={orders}
+                            ordersLoading={ordersLoading}
+                            orderStats={orderStats}
+                            subscribers={subscribers}
+                            isMobile={isMobile}
+                            t={t}
+                            sec={sec}
+                            st={st}
+                            setActiveTab={setActiveTab}
+                            setSelectedOrderId={setSelectedOrderId}
+                        />
                     )}
 
                     {/* ═══════ LISTINGS & AVAILABILITY ═══════ */}
@@ -483,6 +477,7 @@ const Admin = () => {
                                 {[
                                     { id: 'sent', label: 'Sent Log' },
                                     { id: 'compose', label: 'Compose' },
+                                    { id: 'templates', label: 'Templates' },
                                     { id: 'subscribers', label: 'Subscribers' },
                                 ].map(sub => (
                                     <button
@@ -645,6 +640,11 @@ const Admin = () => {
                                         </button>
                                     </div>
                                 </div>
+                            )}
+
+                            {/* Templates */}
+                            {emailSubTab === 'templates' && (
+                                <TemplatesSubTab t={t} sec={sec} st={st} />
                             )}
 
                             {/* Subscribers */}
@@ -856,6 +856,9 @@ const Admin = () => {
                                                                     {labelLoading[selectedOrder.id] ? 'Generating…' : 'Generate Shipping Label'}
                                                                 </button>
                                                             )
+                                                        )}
+                                                        {normalizeOrderStatus(selectedOrder.status) === 'shipped' && selectedOrder.tracking_number && (
+                                                            <ShippingNotificationBtn order={selectedOrder} t={t} />
                                                         )}
                                                     </div>
                                                 </div>
@@ -1245,5 +1248,408 @@ const st = {
     th: { padding: '14px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, borderBottom: '2px solid' },
     td: { padding: '14px 16px', fontSize: 14, borderBottom: '1px solid' },
 };
+
+// ──────────────────────────────────────────────────────────────
+// Admin Dashboard Component
+// ──────────────────────────────────────────────────────────────
+const ORDER_STATUS_COLORS_DASH = {
+    pending: '#f59e0b',
+    accepted: '#3b82f6',
+    files_generated: '#06b6d4',
+    printed_cut: '#6366f1',
+    assembled: '#8b5cf6',
+    packed: '#a855f7',
+    shipped: '#22c55e',
+    cancelled: '#ef4444',
+};
+
+function MiniSparkline({ orders, t }) {
+    if (!orders.length) return null;
+    // Group revenue by day (last 30 days)
+    const now = Date.now();
+    const buckets = Array.from({ length: 30 }, (_, i) => {
+        const day = new Date(now - (29 - i) * 86400000);
+        return { label: day.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }), revenue: 0 };
+    });
+    orders.forEach(o => {
+        const d = new Date(o.created_at);
+        const diffDays = Math.floor((now - d.getTime()) / 86400000);
+        if (diffDays >= 0 && diffDays < 30) {
+            buckets[29 - diffDays].revenue += o.total ?? 0;
+        }
+    });
+    const max = Math.max(...buckets.map(b => b.revenue), 1);
+    const W = 400, H = 56, PAD = 4;
+    const pts = buckets.map((b, i) => {
+        const x = PAD + (i / (buckets.length - 1)) * (W - PAD * 2);
+        const y = H - PAD - (b.revenue / max) * (H - PAD * 2);
+        return `${x},${y}`;
+    }).join(' ');
+
+    return (
+        <div style={{ width: '100%', overflow: 'hidden' }}>
+            <svg viewBox={`0 0 ${W} ${H}`} style={{ width: '100%', height: 56, display: 'block' }} preserveAspectRatio="none">
+                <defs>
+                    <linearGradient id="revGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#22c55e" stopOpacity="0.3" />
+                        <stop offset="100%" stopColor="#22c55e" stopOpacity="0" />
+                    </linearGradient>
+                </defs>
+                <polygon
+                    points={`${PAD},${H} ${pts} ${W - PAD},${H}`}
+                    fill="url(#revGrad)"
+                />
+                <polyline points={pts} fill="none" stroke="#22c55e" strokeWidth="1.5" strokeLinejoin="round" strokeLinecap="round" />
+            </svg>
+        </div>
+    );
+}
+
+function AdminDashboard({ orders, ordersLoading, orderStats, subscribers, isMobile, t, sec, st, setActiveTab, setSelectedOrderId }) {
+    const recentOrders = [...orders].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 5);
+    const uniqueCustomers = new Set(orders.map(o => o.email)).size;
+    const avgOrderValue = orders.length > 0 ? (orderStats.revenue / orders.length) : 0;
+    const activeSubscribers = subscribers.filter(s => !s.unsubscribed_at).length;
+
+    const stats = [
+        { val: ordersLoading ? '—' : `$${orderStats.revenue.toFixed(2)}`, label: 'Total Revenue', color: '#22c55e', sub: 'all time' },
+        { val: ordersLoading ? '—' : orderStats.total, label: 'Total Orders', color: t.primary, sub: 'all time' },
+        { val: ordersLoading ? '—' : orderStats.pending, label: 'Pending Orders', color: '#f59e0b', sub: 'need action' },
+        { val: ordersLoading ? '—' : uniqueCustomers, label: 'Customers', color: '#3b82f6', sub: 'unique emails' },
+        { val: ordersLoading ? '—' : `$${avgOrderValue.toFixed(2)}`, label: 'Avg Order Value', color: '#a855f7', sub: 'per order' },
+        { val: ordersLoading ? '—' : orderStats.shipped, label: 'Shipped', color: '#22c55e', sub: 'fulfilled' },
+        { val: ordersLoading ? '—' : orderStats.processing, label: 'In Production', color: '#06b6d4', sub: 'in progress' },
+        { val: activeSubscribers, label: 'Newsletter Subs', color: '#f59e0b', sub: 'active' },
+    ];
+
+    return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            {/* Stat grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4, 1fr)', gap: isMobile ? 8 : 16 }}>
+                {stats.map(({ val, label, color, sub }) => (
+                    <div key={label} style={{ ...st.statCard, padding: isMobile ? '12px 14px' : '20px 24px', background: t.surface, borderColor: t.border, borderLeft: `3px solid ${color}` }}>
+                        <div style={{ fontSize: isMobile ? 22 : 28, fontWeight: 800, color, letterSpacing: -0.5 }}>{val}</div>
+                        <div style={{ fontSize: isMobile ? 11 : 12, color: t.text, marginTop: 4, fontWeight: 600 }}>{label}</div>
+                        <div style={{ fontSize: 10, color: t.textFaint, marginTop: 2 }}>{sub}</div>
+                    </div>
+                ))}
+            </div>
+
+            {/* Revenue sparkline */}
+            {!ordersLoading && orders.length > 0 && (
+                <div style={{ ...sec }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                        <div>
+                            <h3 style={{ ...st.sectionTitle, margin: 0 }}>Revenue (Last 30 Days)</h3>
+                            <p style={{ fontSize: 12, color: t.textMuted, margin: '4px 0 0' }}>Daily totals from confirmed orders</p>
+                        </div>
+                        <div style={{ fontSize: 22, fontWeight: 800, color: '#22c55e' }}>${orderStats.revenue.toFixed(2)}</div>
+                    </div>
+                    <MiniSparkline orders={orders} t={t} />
+                </div>
+            )}
+
+            {/* Order status breakdown */}
+            {!ordersLoading && orders.length > 0 && (
+                <div style={{ ...sec }}>
+                    <h3 style={{ ...st.sectionTitle, marginBottom: 14 }}>Order Pipeline</h3>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                        {Object.entries(ORDER_STATUS_COLORS_DASH).map(([status, color]) => {
+                            const count = orders.filter(o => o.status === status).length;
+                            if (!count) return null;
+                            return (
+                                <div key={status} style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 8, background: `${color}15`, border: `1px solid ${color}30` }}>
+                                    <span style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0 }} />
+                                    <span style={{ fontSize: 12, fontWeight: 700, color }}>{count}</span>
+                                    <span style={{ fontSize: 12, color: t.textMuted, textTransform: 'capitalize' }}>{status.replace(/_/g, ' ')}</span>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
+
+            {/* Recent orders */}
+            <div style={{ ...sec, padding: 0, overflow: 'hidden' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '16px 20px', borderBottom: `1px solid ${t.border}` }}>
+                    <h3 style={{ ...st.sectionTitle, margin: 0 }}>Recent Orders</h3>
+                    <button
+                        type="button"
+                        onClick={() => setActiveTab('orders')}
+                        style={{ fontSize: 12, fontWeight: 600, color: t.primary, background: 'none', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}
+                    >
+                        View all →
+                    </button>
+                </div>
+                {ordersLoading ? (
+                    <p style={{ padding: '24px 20px', color: t.textMuted, fontSize: 13 }}>Loading…</p>
+                ) : recentOrders.length === 0 ? (
+                    <p style={{ padding: '24px 20px', color: t.textMuted, fontSize: 13, textAlign: 'center' }}>No orders yet.</p>
+                ) : (
+                    <div>
+                        {recentOrders.map(order => {
+                            const shortId = order.id.replace(/-/g, '').slice(0, 6).toUpperCase();
+                            const date = new Date(order.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                            const color = ORDER_STATUS_COLORS_DASH[order.status] || '#6b7280';
+                            return (
+                                <button
+                                    key={order.id}
+                                    type="button"
+                                    onClick={() => { setActiveTab('orders'); setSelectedOrderId(order.id); }}
+                                    style={{
+                                        width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                                        padding: '12px 20px', background: 'none', border: 'none', borderBottom: `1px solid ${t.border}`,
+                                        cursor: 'pointer', textAlign: 'left', transition: 'background .1s',
+                                    }}
+                                    onMouseEnter={e => { e.currentTarget.style.background = t.surfaceHover; }}
+                                    onMouseLeave={e => { e.currentTarget.style.background = 'none'; }}
+                                >
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                                        <div style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0 }} />
+                                        <div>
+                                            <div style={{ fontSize: 13, fontWeight: 700, color: t.text, fontFamily: 'monospace' }}>#{shortId}</div>
+                                            <div style={{ fontSize: 11, color: t.textMuted, marginTop: 1 }}>{order.name} · {date}</div>
+                                        </div>
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                        <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, padding: '2px 8px', borderRadius: 5, background: `${color}20`, color }}>{order.status}</span>
+                                        <span style={{ fontSize: 14, fontWeight: 800, color: t.text }}>${Number(order.total).toFixed(2)}</span>
+                                    </div>
+                                </button>
+                            );
+                        })}
+                    </div>
+                )}
+            </div>
+
+            {/* Quick links */}
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(3, 1fr)', gap: 12 }}>
+                {[
+                    { label: 'Pending orders need action', cta: 'View Orders', tab: 'orders', count: orderStats.pending, color: '#f59e0b' },
+                    { label: 'Manage product listings', cta: 'View Listings', tab: 'listings', count: null, color: t.primary },
+                    { label: 'Newsletter subscribers', cta: 'View Emails', tab: 'emails', count: activeSubscribers, color: '#3b82f6' },
+                ].map(({ label, cta, tab, count, color }) => (
+                    <button
+                        key={tab}
+                        type="button"
+                        onClick={() => setActiveTab(tab)}
+                        style={{ padding: '16px 20px', borderRadius: 12, border: `1px solid ${t.border}`, background: t.surface, cursor: 'pointer', textAlign: 'left', transition: 'border-color .15s, background .15s' }}
+                        onMouseEnter={e => { e.currentTarget.style.borderColor = color; e.currentTarget.style.background = t.surfaceHover; }}
+                        onMouseLeave={e => { e.currentTarget.style.borderColor = t.border; e.currentTarget.style.background = t.surface; }}
+                    >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                            <p style={{ fontSize: 13, color: t.textMuted, margin: 0, lineHeight: 1.5 }}>{label}</p>
+                            {count !== null && <span style={{ fontSize: 16, fontWeight: 800, color }}>{count}</span>}
+                        </div>
+                        <div style={{ marginTop: 12, fontSize: 13, fontWeight: 700, color }}>{cta} →</div>
+                    </button>
+                ))}
+            </div>
+        </div>
+    );
+}
+
+// ──────────────────────────────────────────────────────────────
+// Shipping Notification Button
+// ──────────────────────────────────────────────────────────────
+function ShippingNotificationBtn({ order, t }) {
+    const [sending, setSending] = useState(false);
+    const [sent, setSent] = useState(false);
+    const [error, setError] = useState('');
+
+    const handleSend = async () => {
+        setSending(true);
+        setError('');
+        try {
+            const html = orderShipped({
+                name: order.name,
+                orderId: order.id,
+                trackingNumber: order.tracking_number,
+                labelUrl: order.label_url,
+                carrier: 'USPS',
+            });
+            const res = await fetch('/api/send-email', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    to: order.email,
+                    subject: `Your STAKD Order Has Shipped — #${order.id.replace(/-/g, '').slice(0, 6).toUpperCase()}`,
+                    bodyHtml: html,
+                    type: 'order_shipped',
+                    orderId: order.id,
+                }),
+            });
+            if (res.ok) { setSent(true); } else { const d = await res.json().catch(() => ({})); setError(d.error || 'Failed'); }
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setSending(false);
+        }
+    };
+
+    if (sent) return <span style={{ fontSize: 12, color: '#22c55e', fontWeight: 600 }}>✓ Shipping notification sent</span>;
+
+    return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+            <button
+                type="button"
+                disabled={sending}
+                onClick={handleSend}
+                style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid #3b82f6', fontSize: 12, fontWeight: 700, cursor: sending ? 'wait' : 'pointer', background: '#3b82f620', color: '#3b82f6', opacity: sending ? 0.7 : 1 }}
+            >
+                {sending ? 'Sending…' : 'Send Shipping Notification'}
+            </button>
+            {error && <span style={{ fontSize: 11, color: '#ef4444' }}>{error}</span>}
+        </div>
+    );
+}
+
+// ──────────────────────────────────────────────────────────────
+// Templates Sub-Tab
+// ──────────────────────────────────────────────────────────────
+const TEMPLATE_DEFS = [
+    {
+        id: 'order_confirmation',
+        label: 'Order Confirmation',
+        description: 'Sent automatically after a successful checkout.',
+        build: () => orderConfirmation({
+            name: 'Jane',
+            orderId: 'preview-order-id',
+            items: [{ product_id: 'hk-theknight', name: 'The Knight', quantity: 1, price: 59.99 }],
+            subtotal: 59.99, tax: 4.80, shipping: 0, total: 64.79,
+            address: '123 Main St, Des Moines, IA 50266',
+        }),
+        subject: 'Order Confirmed — #PREVIEW',
+    },
+    {
+        id: 'order_shipped',
+        label: 'Order Shipped',
+        description: 'Sent when an order ships with tracking info.',
+        build: () => orderShipped({
+            name: 'Jane',
+            orderId: 'preview-order-id',
+            trackingNumber: '9400111899223397846246',
+            carrier: 'USPS',
+        }),
+        subject: 'Your Order Has Shipped',
+    },
+    {
+        id: 'welcome',
+        label: 'Welcome Email',
+        description: 'Sent to new account holders after sign-up.',
+        build: () => welcomeEmail({ name: 'Jane' }),
+        subject: 'Welcome to STAKD Cards',
+    },
+    {
+        id: 'newsletter',
+        label: 'Newsletter',
+        description: 'Customizable blast email for announcements.',
+        build: () => newsletterTemplate({
+            subject: 'New Drop — The Knight Edition',
+            headline: 'New Drop Just Landed 🎴',
+            bodyHtml: "<p>We just released a brand new shadowbox featuring the iconic <strong>Knight</strong>. Limited quantities available \u2014 grab yours before they're gone.</p>",
+            ctaText: 'Shop Now',
+            ctaUrl: 'https://www.stakdcards.com/products',
+        }),
+        subject: 'New Drop — The Knight Edition',
+    },
+];
+
+function TemplatesSubTab({ t, sec, st }) {
+    const [selected, setSelected] = useState(null);
+    const [testEmail, setTestEmail] = useState('');
+    const [sending, setSending] = useState(false);
+    const [feedback, setFeedback] = useState('');
+
+    const preview = selected ? TEMPLATE_DEFS.find(td => td.id === selected) : null;
+    const previewHtml = preview ? preview.build() : '';
+
+    const handleSendTest = async () => {
+        if (!testEmail.trim() || !preview) return;
+        setSending(true);
+        setFeedback('');
+        try {
+            const res = await fetch('/api/send-email', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ to: testEmail.trim(), subject: `[TEST] ${preview.subject}`, bodyHtml: previewHtml, type: 'test' }),
+            });
+            const data = await res.json().catch(() => ({}));
+            setFeedback(res.ok ? '✓ Test email sent.' : `Error: ${data.error || 'Failed'}`);
+        } catch (err) {
+            setFeedback(`Network error: ${err.message}`);
+        } finally {
+            setSending(false);
+        }
+    };
+
+    return (
+        <div style={{ display: 'grid', gridTemplateColumns: selected ? '260px 1fr' : '1fr', gap: 20, alignItems: 'start' }}>
+            {/* Template list */}
+            <div style={{ ...sec, padding: 0, overflow: 'hidden' }}>
+                <div style={{ padding: '16px 20px', borderBottom: `1px solid ${t.border}` }}>
+                    <h3 style={{ ...st.sectionTitle, margin: 0 }}>Email Templates</h3>
+                </div>
+                {TEMPLATE_DEFS.map(td => (
+                    <button
+                        key={td.id}
+                        type="button"
+                        onClick={() => { setSelected(selected === td.id ? null : td.id); setFeedback(''); }}
+                        style={{
+                            width: '100%', textAlign: 'left', padding: '14px 20px',
+                            background: selected === td.id ? t.tagBg : 'none',
+                            border: 'none', borderBottom: `1px solid ${t.border}`,
+                            cursor: 'pointer',
+                            borderLeft: `3px solid ${selected === td.id ? t.primary : 'transparent'}`,
+                            transition: 'all .1s',
+                        }}
+                    >
+                        <div style={{ fontSize: 13, fontWeight: 700, color: selected === td.id ? t.primary : t.text }}>{td.label}</div>
+                        <div style={{ fontSize: 11, color: t.textMuted, marginTop: 3, lineHeight: 1.5 }}>{td.description}</div>
+                    </button>
+                ))}
+            </div>
+
+            {/* Preview + send test */}
+            {selected && (
+                <div>
+                    {/* Send test */}
+                    <div style={{ ...sec, marginBottom: 16 }}>
+                        <h4 style={{ fontSize: 13, fontWeight: 700, color: t.text, margin: '0 0 12px' }}>Send Test Email</h4>
+                        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                            <input
+                                type="email"
+                                value={testEmail}
+                                onChange={e => setTestEmail(e.target.value)}
+                                placeholder="your@email.com"
+                                style={{ flex: 1, minWidth: 180, padding: '9px 12px', borderRadius: 8, border: `1px solid ${t.inputBorder}`, background: t.inputBg, color: t.inputText, fontSize: 13 }}
+                            />
+                            <button
+                                type="button"
+                                onClick={handleSendTest}
+                                disabled={sending || !testEmail.trim()}
+                                style={{ padding: '9px 18px', borderRadius: 8, border: 'none', background: t.primary, color: '#fff', fontWeight: 700, fontSize: 13, cursor: sending ? 'wait' : 'pointer', opacity: sending ? 0.7 : 1 }}
+                            >
+                                {sending ? 'Sending…' : 'Send Test'}
+                            </button>
+                        </div>
+                        {feedback && <p style={{ margin: '8px 0 0', fontSize: 13, color: feedback.startsWith('✓') ? '#22c55e' : '#ef4444', fontWeight: 600 }}>{feedback}</p>}
+                    </div>
+                    {/* HTML preview in iframe */}
+                    <div style={{ ...sec, padding: 0, overflow: 'hidden' }}>
+                        <div style={{ padding: '12px 16px', borderBottom: `1px solid ${t.border}`, fontSize: 12, fontWeight: 600, color: t.textMuted }}>
+                            Preview — {preview.label}
+                        </div>
+                        <iframe
+                            title="Email preview"
+                            srcDoc={previewHtml}
+                            style={{ width: '100%', height: 600, border: 'none', display: 'block', background: '#fff' }}
+                        />
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
 
 export default Admin;

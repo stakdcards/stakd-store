@@ -4,12 +4,14 @@ import SiteHeader from '../components/SiteHeader';
 import Footer from '../components/Footer';
 import { useDarkMode } from '../contexts/DarkModeContext';
 import { useCart } from '../contexts/CartContext';
+import { track } from '../lib/posthog';
 
 export default function CheckoutSuccess() {
     const { t } = useDarkMode();
     const { clearCart } = useCart();
 
     useEffect(() => {
+        track('order_completed');
         clearCart();
     }, [clearCart]);
 

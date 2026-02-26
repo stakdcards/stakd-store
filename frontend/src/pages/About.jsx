@@ -47,7 +47,7 @@ const About = () => {
                         Contact
                     </div>
                     <div style={{ fontSize: 15, color: t.text }}>
-                        <a href="mailto:hello@stakdcards.com" style={{ color: t.primary, fontWeight: 600 }}>hello@stakdcards.com</a>
+                        <a href="mailto:hello@stakdcards.com" target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); window.open('mailto:hello@stakdcards.com'); }} style={{ color: t.primary, fontWeight: 600 }}>hello@stakdcards.com</a>
                     </div>
                 </div>
 

@@ -378,8 +378,17 @@ const Admin = () => {
                                         {products.map(p => (
                                             <tr key={p.id} style={{ borderBottom: `1px solid ${t.border}` }}>
                                                 <td style={{ ...st.td, color: t.text, fontWeight: 600 }}>
-                                                    <div>{p.name}</div>
-                                                    <div style={{ fontSize: 11, color: t.textMuted, fontWeight: 400, marginTop: 2 }}>{p.franchise || ''}</div>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                                                        {(p.images && p.images.length > 0 && (p.images[0].url || p.images[0].dataUrl)) ? (
+                                                            <img src={p.images[0].url || p.images[0].dataUrl} alt="" style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 8, border: `1px solid ${t.border}`, flexShrink: 0 }} />
+                                                        ) : (
+                                                            <div style={{ width: 44, height: 44, borderRadius: 8, border: `1px solid ${t.border}`, background: t.surfaceAlt, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, color: t.textFaint }}>No img</div>
+                                                        )}
+                                                        <div>
+                                                            <div>{p.name}</div>
+                                                            <div style={{ fontSize: 11, color: t.textMuted, fontWeight: 400, marginTop: 2 }}>{p.franchise || ''}</div>
+                                                        </div>
+                                                    </div>
                                                 </td>
                                                 <td style={{ ...st.td, color: t.textMuted }}>{categories.find(c => c.id === p.category)?.label ?? p.category}</td>
                                                 <td style={{ ...st.td, color: t.text, fontWeight: 700 }}>${p.price.toFixed(2)}</td>
@@ -1333,7 +1342,7 @@ const Admin = () => {
                                                 </button>
                                                 <button type="button" title="Remove"
                                                     onClick={() => setEditDraft(d => ({ ...d, images: (d.images || []).filter((_, i) => i !== idx) }))}
-                                                    style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid #fca5a5', background: '#FEF2F2', color: '#ef4444', cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>
+                                                    style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid #991b1b', background: '#b91c1c', color: '#fff', cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>
                                                     ×
                                                 </button>
                                             </div>
@@ -1402,7 +1411,7 @@ const st = {
     input: { padding: '8px 12px', borderRadius: 6, border: '1px solid', fontSize: 13, outline: 'none', width: '100%', boxSizing: 'border-box' },
     addBtn: { padding: '8px 16px', background: BRAND_INDIGO, color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer' },
     exportBtnLarge: { width: '100%', padding: '14px 20px', background: '#22c55e', color: '#fff', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 8px rgba(34,197,94,0.3)' },
-    deleteBtn: { width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FEF2F2', color: '#ef4444', border: '1px solid #fca5a5', borderRadius: 6, fontSize: 20, fontWeight: 'bold', cursor: 'pointer' },
+    deleteBtn: { width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#b91c1c', color: '#fff', border: '1px solid #991b1b', borderRadius: 6, fontSize: 20, fontWeight: 'bold', cursor: 'pointer' },
     statCard: { padding: 24, borderRadius: 12, border: '1px solid', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' },
     filterBar: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: 16, borderRadius: 12, border: '1px solid', marginBottom: 16, flexWrap: 'wrap', gap: 12 },
     filterBtn: { padding: '8px 16px', borderRadius: 8, border: '1px solid', fontSize: 13, fontWeight: 600, cursor: 'pointer' },

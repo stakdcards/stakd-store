@@ -69,7 +69,7 @@ const FAQ = () => {
                     ))}
                 </div>
                 <p style={{ marginTop: 24, fontSize: 14, color: t.textMuted }}>
-                    Still have questions? <a href="mailto:hello@stakdcards.com" style={{ color: t.primary, fontWeight: 600 }}>Get in touch</a>.
+                    Still have questions? <a href="mailto:hello@stakdcards.com" target="_blank" rel="noopener noreferrer" onClick={(e) => { e.preventDefault(); window.open('mailto:hello@stakdcards.com'); }} style={{ color: t.primary, fontWeight: 600 }}>Get in touch</a>.
                 </p>
                 <Link to="/products" style={{
                     display: 'inline-block', marginTop: 32, padding: '12px 24px', borderRadius: 10,

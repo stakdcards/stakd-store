@@ -85,18 +85,6 @@ export const ShadowboxPreview = ({ product, minimal = false }) => {
                     filter: 'blur(4px)',
                 }} />
 
-                {!minimal && (
-                    /* Category / franchise label */
-                    <div style={{
-                        position: 'absolute', top: limited ? 36 : 10, left: 10,
-                        fontSize: 8, fontWeight: 800, letterSpacing: 1.5,
-                        textTransform: 'uppercase', color: accent,
-                        opacity: 0.85,
-                    }}>
-                        {franchise}
-                    </div>
-                )}
-
                 {/* Name block */}
                 <div style={{
                     position: 'absolute', bottom: 0, left: 0, right: 0,

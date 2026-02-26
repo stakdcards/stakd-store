@@ -91,6 +91,12 @@ function ProductDetail({ product, onClose }) {
     const { categories } = useProductStore();
     const inCart = isInCart(product.id);
     const isMobile = window.innerWidth < 640;
+    const images = (product.images && Array.isArray(product.images)) ? product.images.filter(img => img.url || img.dataUrl) : [];
+    const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+    useEffect(() => { setSelectedImageIndex(0); }, [product.id]);
+
+    const hasGallery = images.length > 0;
+    const mainImageUrl = hasGallery && images[selectedImageIndex] ? (images[selectedImageIndex].url || images[selectedImageIndex].dataUrl) : null;
 
     return (
         <div style={{ position: 'fixed', inset: 0, zIndex: 300, display: 'flex', alignItems: isMobile ? 'flex-end' : 'center', justifyContent: 'center', padding: isMobile ? 0 : 20, background: t.dimOverlay }}
@@ -119,7 +125,27 @@ function ProductDetail({ product, onClose }) {
                             fontSize: 18, display: 'flex', alignItems: 'center', justifyContent: 'center',
                         }}>×</button>
                         <div style={{ padding: '4px 20px 0', maxWidth: 220, margin: '0 auto' }}>
-                            <ShadowboxPreview product={product} />
+                            {hasGallery ? (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                                    <div style={{ aspectRatio: '3/4', borderRadius: 8, overflow: 'hidden', background: t.surfaceAlt }}>
+                                        <img src={mainImageUrl} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                    </div>
+                                    {images.length > 1 && (
+                                        <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
+                                            {images.map((img, i) => (
+                                                <button key={img.id} type="button" onClick={() => setSelectedImageIndex(i)} style={{
+                                                    width: 44, height: 44, padding: 0, border: `2px solid ${i === selectedImageIndex ? t.primary : t.border}`,
+                                                    borderRadius: 6, overflow: 'hidden', background: t.surfaceAlt, cursor: 'pointer',
+                                                }}>
+                                                    <img src={img.url || img.dataUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                                </button>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            ) : (
+                                <ShadowboxPreview product={product} />
+                            )}
                         </div>
                         <div style={{ padding: '16px 20px 32px' }}>
                             <div style={{ fontSize: 10, fontWeight: 800, color: t.primary, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 8 }}>{product.franchise}</div>
@@ -163,8 +189,28 @@ function ProductDetail({ product, onClose }) {
                 ) : (
                 /* ── Desktop: side-by-side layout ── */
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', position: 'relative' }}>
-                    <div style={{ padding: 'clamp(20px, 3vw, 36px)' }}>
-                        <ShadowboxPreview product={product} />
+                    <div style={{ padding: 'clamp(20px, 3vw, 36px)', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                        {hasGallery ? (
+                            <>
+                                <div style={{ aspectRatio: '3/4', borderRadius: 10, overflow: 'hidden', background: t.surfaceAlt }}>
+                                    <img src={mainImageUrl} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                </div>
+                                {images.length > 1 && (
+                                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                                        {images.map((img, i) => (
+                                            <button key={img.id} type="button" onClick={() => setSelectedImageIndex(i)} style={{
+                                                width: 52, height: 52, padding: 0, border: `2px solid ${i === selectedImageIndex ? t.primary : t.border}`,
+                                                borderRadius: 8, overflow: 'hidden', background: t.surfaceAlt, cursor: 'pointer',
+                                            }}>
+                                                <img src={img.url || img.dataUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                                            </button>
+                                        ))}
+                                    </div>
+                                )}
+                            </>
+                        ) : (
+                            <ShadowboxPreview product={product} />
+                        )}
                     </div>
                     <div style={{ padding: 'clamp(20px, 3vw, 36px)', borderLeft: `1px solid ${t.border}` }}>
                         <button onClick={onClose} style={{

@@ -141,7 +141,7 @@ function ProductDetail({ product, onClose }) {
                         onClick={() => setFullscreenOpen(false)}
                         style={{
                             position: 'absolute', top: 16, right: 16, width: 44, height: 44,
-                            borderRadius: 50%, border: '1px solid rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.1)',
+                            borderRadius: '50%', border: '1px solid rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.1)',
                             color: '#fff', fontSize: 22, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
                         }}
                         aria-label="Close"
@@ -155,7 +155,7 @@ function ProductDetail({ product, onClose }) {
                                 onClick={(e) => { e.stopPropagation(); goPrev(); }}
                                 style={{
                                     position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)',
-                                    width: 48, height: 48, borderRadius: 50%, border: '1px solid rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.1)',
+                                    width: 48, height: 48, borderRadius: '50%', border: '1px solid rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.1)',
                                     color: '#fff', fontSize: 24, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
                                 }}
                                 aria-label="Previous image"
@@ -167,7 +167,7 @@ function ProductDetail({ product, onClose }) {
                                 onClick={(e) => { e.stopPropagation(); goNext(); }}
                                 style={{
                                     position: 'absolute', right: 16, top: '50%', transform: 'translateY(-50%)',
-                                    width: 48, height: 48, borderRadius: 50%, border: '1px solid rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.1)',
+                                    width: 48, height: 48, borderRadius: '50%', border: '1px solid rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.1)',
                                     color: '#fff', fontSize: 24, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
                                 }}
                                 aria-label="Next image"

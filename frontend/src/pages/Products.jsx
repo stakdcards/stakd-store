@@ -143,11 +143,11 @@ function ProductDetail({ product, onClose }) {
                             position: 'absolute', top: 16, right: 16, width: 44, height: 44,
                             borderRadius: '50%', border: '1px solid rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.1)',
                             color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            padding: 0,
+                            padding: 0, lineHeight: 0,
                         }}
                         aria-label="Close"
                     >
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden style={{ display: 'block' }}>
                             <path d="M18 6L6 18M6 6l12 12" />
                         </svg>
                     </button>
@@ -159,11 +159,14 @@ function ProductDetail({ product, onClose }) {
                                 style={{
                                     position: 'absolute', left: 16, top: '50%', transform: 'translateY(-50%)',
                                     width: 48, height: 48, borderRadius: '50%', border: '1px solid rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.1)',
-                                    color: '#fff', fontSize: 24, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    padding: 0, lineHeight: 0,
                                 }}
                                 aria-label="Previous image"
                             >
-                                ‹
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'block' }}>
+                                    <path d="M15 18l-6-6 6-6" />
+                                </svg>
                             </button>
                             <button
                                 type="button"
@@ -171,11 +174,14 @@ function ProductDetail({ product, onClose }) {
                                 style={{
                                     position: 'absolute', right: 16, top: '50%', transform: 'translateY(-50%)',
                                     width: 48, height: 48, borderRadius: '50%', border: '1px solid rgba(255,255,255,0.3)', background: 'rgba(255,255,255,0.1)',
-                                    color: '#fff', fontSize: 24, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    padding: 0, lineHeight: 0,
                                 }}
                                 aria-label="Next image"
                             >
-                                ›
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'block' }}>
+                                    <path d="M15 6l-6 6 6 6" />
+                                </svg>
                             </button>
                         </>
                     )}
@@ -216,14 +222,22 @@ function ProductDetail({ product, onClose }) {
                             position: 'absolute', top: 12, right: 16,
                             width: 32, height: 32, borderRadius: 8, border: `1px solid ${t.border}`,
                             background: t.surfaceAlt, color: t.textMuted, cursor: 'pointer',
-                            fontSize: 18, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        }}>×</button>
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, lineHeight: 0,
+                        }} aria-label="Close">
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'block' }}>
+                                <path d="M18 6L6 18M6 6l12 12" />
+                            </svg>
+                        </button>
                         <div style={{ padding: '4px 20px 0', maxWidth: 220, margin: '0 auto' }}>
                             {hasGallery ? (
                                 <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                                     <button type="button" onClick={() => setFullscreenOpen(true)} title="View fullscreen" style={{ position: 'relative', aspectRatio: '3/4', borderRadius: 8, overflow: 'hidden', background: t.surfaceAlt, padding: 0, border: 'none', cursor: 'pointer', display: 'block', width: '100%' }}>
                                         <img src={mainImageUrl} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                        <span style={{ position: 'absolute', top: 8, right: 8, width: 28, height: 28, borderRadius: 6, background: 'rgba(0,0,0,0.5)', color: '#fff', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }} aria-hidden>⛶</span>
+                                        <span style={{ position: 'absolute', top: 8, right: 8, width: 28, height: 28, borderRadius: 6, background: 'rgba(0,0,0,0.5)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, lineHeight: 0 }} aria-hidden>
+                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'block' }}>
+                                                <path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3" />
+                                            </svg>
+                                        </span>
                                     </button>
                                     {images.length > 1 && (
                                         <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
@@ -289,7 +303,11 @@ function ProductDetail({ product, onClose }) {
                             <>
                                 <button type="button" onClick={() => setFullscreenOpen(true)} title="View fullscreen" style={{ position: 'relative', aspectRatio: '3/4', borderRadius: 10, overflow: 'hidden', background: t.surfaceAlt, padding: 0, border: 'none', cursor: 'pointer', display: 'block', width: '100%' }}>
                                     <img src={mainImageUrl} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                                    <span style={{ position: 'absolute', top: 10, right: 10, width: 32, height: 32, borderRadius: 8, background: 'rgba(0,0,0,0.5)', color: '#fff', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }} aria-hidden>⛶</span>
+                                    <span style={{ position: 'absolute', top: 10, right: 10, width: 32, height: 32, borderRadius: 8, background: 'rgba(0,0,0,0.5)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, lineHeight: 0 }} aria-hidden>
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'block' }}>
+                                            <path d="M8 3H5a2 2 0 00-2 2v3m18 0V5a2 2 0 00-2-2h-3m0 18h3a2 2 0 002-2v-3M3 16v3a2 2 0 002 2h3" />
+                                        </svg>
+                                    </span>
                                 </button>
                                 {images.length > 1 && (
                                     <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -313,8 +331,12 @@ function ProductDetail({ product, onClose }) {
                             position: 'absolute', top: 20, right: 20,
                             width: 32, height: 32, borderRadius: 8, border: `1px solid ${t.border}`,
                             background: t.surfaceAlt, color: t.textMuted, cursor: 'pointer',
-                            fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        }}>×</button>
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, lineHeight: 0,
+                        }} aria-label="Close">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'block' }}>
+                                <path d="M18 6L6 18M6 6l12 12" />
+                            </svg>
+                        </button>
 
                         <div style={{ fontSize: 11, fontWeight: 800, color: t.primary, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 12 }}>
                             {product.franchise}

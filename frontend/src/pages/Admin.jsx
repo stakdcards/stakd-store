@@ -972,7 +972,9 @@ const Admin = () => {
                                     <div style={{ background: t.surface, border: `1px solid ${t.border}`, borderRadius: 16, maxWidth: 640, width: '100%', maxHeight: '90vh', overflow: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }} onClick={e => e.stopPropagation()}>
                                         <div style={{ padding: '20px 24px', borderBottom: `1px solid ${t.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
                                             <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: t.text }}>Order {shortOrderId(selectedOrderId)}</h3>
-                                            <button type="button" onClick={() => setSelectedOrderId(null)} style={{ width: 36, height: 36, borderRadius: 8, border: `1px solid ${t.border}`, background: t.surfaceAlt, color: t.text, cursor: 'pointer', fontSize: 18, lineHeight: 1 }}>×</button>
+                                            <button type="button" onClick={() => setSelectedOrderId(null)} aria-label="Close" style={{ width: 36, height: 36, borderRadius: 8, border: `1px solid ${t.border}`, background: t.surfaceAlt, color: t.text, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, lineHeight: 0 }}>
+                                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'block' }}><path d="M18 6L6 18M6 6l12 12" /></svg>
+                                            </button>
                                         </div>
                                         <div style={{ padding: 24 }}>
                                             {selectedOrder && (
@@ -1061,7 +1063,9 @@ const Admin = () => {
                     <div style={{ background: t.surface, borderRadius: 16, border: `1px solid ${t.border}`, boxShadow: '0 24px 80px rgba(0,0,0,0.35)', width: '100%', maxWidth: 480, maxHeight: '90vh', overflowY: 'auto', padding: 24 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
                             <h3 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: t.text }}>Add product</h3>
-                            <button type="button" onClick={() => setAddingProduct(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: t.textMuted, fontSize: 22, lineHeight: 1, padding: 4 }}>×</button>
+                            <button type="button" onClick={() => setAddingProduct(false)} aria-label="Close" style={{ background: 'none', border: 'none', cursor: 'pointer', color: t.textMuted, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 4, lineHeight: 0 }}>
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'block' }}><path d="M18 6L6 18M6 6l12 12" /></svg>
+                            </button>
                         </div>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
                             <div><label style={{ display: 'block', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: t.textMuted, marginBottom: 6 }}>ID (slug, e.g. vg-new)</label><input value={newProductDraft.id} onChange={e => setNewProductDraft(d => ({ ...d, id: e.target.value.replace(/\s/g, '-') }))} placeholder="vg-new" style={{ ...inp(), width: '100%' }} /></div>
@@ -1189,8 +1193,11 @@ const Admin = () => {
                             <button
                                 type="button"
                                 onClick={() => setEditingProduct(null)}
-                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: t.textMuted, fontSize: 22, lineHeight: 1, padding: 4, flexShrink: 0 }}
-                            >×</button>
+                                aria-label="Close"
+                                style={{ background: 'none', border: 'none', cursor: 'pointer', color: t.textMuted, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 4, lineHeight: 0, flexShrink: 0 }}
+                            >
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'block' }}><path d="M18 6L6 18M6 6l12 12" /></svg>
+                            </button>
                         </div>
 
                         {/* Pricing */}
@@ -1328,7 +1335,7 @@ const Admin = () => {
                                                         [imgs[idx - 1], imgs[idx]] = [imgs[idx], imgs[idx - 1]];
                                                         return { ...d, images: imgs };
                                                     })}
-                                                    style={{ width: 28, height: 28, borderRadius: 6, border: `1px solid ${t.border}`, background: idx === 0 ? t.border : t.surfaceAlt, color: idx === 0 ? t.textFaint : t.text, cursor: idx === 0 ? 'not-allowed' : 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                    style={{ width: 28, height: 28, borderRadius: 6, border: `1px solid ${t.border}`, background: idx === 0 ? t.border : t.surfaceAlt, color: idx === 0 ? t.textFaint : t.text, cursor: idx === 0 ? 'not-allowed' : 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, lineHeight: 0 }}>
                                                     ↑
                                                 </button>
                                                 <button type="button" title="Move down" disabled={idx === (editDraft.images || []).length - 1}
@@ -1337,13 +1344,14 @@ const Admin = () => {
                                                         [imgs[idx], imgs[idx + 1]] = [imgs[idx + 1], imgs[idx]];
                                                         return { ...d, images: imgs };
                                                     })}
-                                                    style={{ width: 28, height: 28, borderRadius: 6, border: `1px solid ${t.border}`, background: idx === (editDraft.images || []).length - 1 ? t.border : t.surfaceAlt, color: idx === (editDraft.images || []).length - 1 ? t.textFaint : t.text, cursor: idx === (editDraft.images || []).length - 1 ? 'not-allowed' : 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                                    style={{ width: 28, height: 28, borderRadius: 6, border: `1px solid ${t.border}`, background: idx === (editDraft.images || []).length - 1 ? t.border : t.surfaceAlt, color: idx === (editDraft.images || []).length - 1 ? t.textFaint : t.text, cursor: idx === (editDraft.images || []).length - 1 ? 'not-allowed' : 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, lineHeight: 0 }}>
                                                     ↓
                                                 </button>
                                                 <button type="button" title="Remove"
                                                     onClick={() => setEditDraft(d => ({ ...d, images: (d.images || []).filter((_, i) => i !== idx) }))}
-                                                    style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid #991b1b', background: '#b91c1c', color: '#fff', cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700 }}>
-                                                    ×
+                                                    aria-label="Remove photo"
+                                                    style={{ width: 28, height: 28, borderRadius: 6, border: '1px solid #991b1b', background: '#b91c1c', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0, lineHeight: 0 }}>
+                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ display: 'block' }}><path d="M18 6L6 18M6 6l12 12" /></svg>
                                                 </button>
                                             </div>
                                         </div>

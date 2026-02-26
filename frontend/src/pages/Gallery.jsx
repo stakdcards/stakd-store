@@ -117,9 +117,10 @@ const Gallery = () => {
         : galleryItems.filter(p => p.category === activeFilter);
 
     return (
-        <div style={{ minHeight: '100vh', background: t.bg, color: t.text }}>
+        <div style={{ minHeight: '100vh', background: t.bg, color: t.text, display: 'flex', flexDirection: 'column' }}>
             <SiteHeader />
 
+            <main style={{ flex: 1 }}>
             {/* Hero */}
             <section style={{
                 background: 'linear-gradient(160deg, #0D0E11 0%, #131525 60%, #0D0E11 100%)',
@@ -246,6 +247,8 @@ const Gallery = () => {
                     </Link>
                 </section>
             </div>
+
+            </main>
 
             <Footer />
 

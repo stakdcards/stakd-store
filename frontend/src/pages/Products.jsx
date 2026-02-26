@@ -29,15 +29,11 @@ function ProductCard({ product }) {
     const isMobile = window.innerWidth < 640;
 
     return (
-        <article style={{
+        <article className="stakd-card" style={{
             background: t.surface, border: `1px solid ${t.border}`,
-            borderRadius: 10, overflow: 'hidden',
+            borderRadius: 12, overflow: 'hidden',
             display: 'flex', flexDirection: 'column',
-            transition: 'transform .2s, box-shadow .2s',
-        }}
-            onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 28px rgba(0,0,0,0.14)'; }}
-            onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = ''; }}
-        >
+        }}>
             <Link to={`?id=${product.id}`} style={{ display: 'block', textDecoration: 'none' }}>
                 <ShadowboxPreview product={product} />
             </Link>
@@ -63,13 +59,14 @@ function ProductCard({ product }) {
                     <button
                         disabled={!product.inStock}
                         onClick={() => product.inStock && !inCart && addToCart(product.id)}
+                        className={product.inStock && !inCart ? 'stakd-btn-primary' : ''}
                         style={{
                             flex: 1, padding: isMobile ? '8px 8px' : '9px 12px', borderRadius: 8, border: 'none',
                             background: !product.inStock ? t.surfaceAlt : inCart ? t.tagBg : t.primary,
                             color: !product.inStock ? t.textFaint : inCart ? t.primary : '#fff',
                             fontWeight: 700, fontSize: isMobile ? 11 : 12,
                             cursor: !product.inStock ? 'not-allowed' : inCart ? 'default' : 'pointer',
-                            letterSpacing: 0.3, transition: 'all .15s',
+                            letterSpacing: 0.3,
                         }}
                     >
                         {!product.inStock ? 'Sold Out' : inCart ? 'In Cart ✓' : 'Add to Cart'}
@@ -291,11 +288,12 @@ const Products = () => {
     };
 
     return (
-        <div style={{ minHeight: '100vh', background: t.bg, color: t.text }}>
+        <div style={{ minHeight: '100vh', background: t.bg, color: t.text, display: 'flex', flexDirection: 'column' }}>
             <SiteHeader />
 
             {openProduct && <ProductDetail product={openProduct} onClose={closeDetail} />}
 
+            <main style={{ flex: 1 }}>
             {/* Page header */}
             <div style={{
                 borderBottom: `1px solid ${t.border}`,
@@ -385,6 +383,7 @@ const Products = () => {
                     ))}
                 </div>
             </div>
+            </main>
             <Footer />
         </div>
     );

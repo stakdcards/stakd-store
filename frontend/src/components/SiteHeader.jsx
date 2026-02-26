@@ -58,7 +58,9 @@ const SiteHeader = () => {
 
     const headerStyle = {
         position: 'sticky', top: 0, zIndex: 200,
-        display: 'flex', alignItems: 'center',
+        display: isMobile ? 'flex' : 'grid',
+        gridTemplateColumns: isMobile ? undefined : '1fr auto 1fr',
+        alignItems: 'center',
         padding: isMobile ? '0 16px' : '0 48px',
         height: isMobile ? 54 : 68,
         background: t.headerBg,
@@ -89,15 +91,15 @@ const SiteHeader = () => {
 
                 {/* Desktop nav — centered */}
                 {!isMobile && (
-                    <nav style={{ display: 'flex', alignItems: 'center', gap: 4, flex: 1, justifyContent: 'center' }}>
+                    <nav style={{ display: 'flex', alignItems: 'center', gap: 4, justifyContent: 'center' }}>
                         {NAV_LINKS.map(l => (
-                            <NavLink key={l.to} to={l.to} style={({ isActive }) => ({
+                            <NavLink key={l.to} to={l.to} className="stakd-nav-link" style={({ isActive }) => ({
                                 padding: '7px 16px', borderRadius: 8,
                                 fontSize: 14, fontWeight: 600, letterSpacing: 0.3,
                                 textDecoration: 'none',
                                 color: isActive ? t.primary : t.textMuted,
-                                background: isActive ? t.tagBg : 'transparent',
-                                transition: 'all .15s',
+                                background: 'transparent',
+                                transition: 'color .2s',
                             })}>
                                 {l.label}
                             </NavLink>
@@ -106,7 +108,7 @@ const SiteHeader = () => {
                 )}
 
                 {/* Right controls */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 4 : 6, marginLeft: 'auto' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 4 : 6, marginLeft: 'auto', justifyContent: 'flex-end' }}>
                     <NavLink to="/cart" style={({ isActive }) => ({
                         ...iconBtn,
                         position: 'relative',

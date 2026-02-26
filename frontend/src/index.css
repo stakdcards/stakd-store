@@ -81,3 +81,76 @@ input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
   background: rgba(42, 42, 105, 0.25);
   color: inherit;
 }
+
+/* ── Premium Interaction Utilities ───────────────────────────────────────── */
+
+/* Nav links — animated underline on hover */
+.stakd-nav-link {
+  position: relative;
+  text-decoration: none !important;
+}
+.stakd-nav-link::after {
+  content: '';
+  position: absolute;
+  bottom: 2px;
+  left: 50%;
+  right: 50%;
+  height: 2px;
+  background: var(--stakd-indigo-lt);
+  border-radius: 2px;
+  transition: left 0.22s cubic-bezier(0.4, 0, 0.2, 1), right 0.22s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.22s;
+  opacity: 0;
+}
+.stakd-nav-link:hover::after,
+.stakd-nav-link[aria-current="page"]::after {
+  left: 10px;
+  right: 10px;
+  opacity: 1;
+}
+
+/* Product / content cards — premium lift on hover */
+.stakd-card {
+  transition: transform 0.22s cubic-bezier(0.34, 1.2, 0.64, 1), box-shadow 0.22s ease, border-color 0.22s ease !important;
+}
+@media (hover: hover) {
+  .stakd-card:hover {
+    transform: translateY(-5px) !important;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.22), 0 2px 8px rgba(109, 129, 187, 0.12) !important;
+    border-color: rgba(109, 129, 187, 0.35) !important;
+  }
+}
+
+/* Social icon hover — scale + color */
+.stakd-social-icon {
+  transition: color 0.18s ease, transform 0.18s cubic-bezier(0.34, 1.4, 0.64, 1) !important;
+}
+@media (hover: hover) {
+  .stakd-social-icon:hover {
+    transform: scale(1.2) !important;
+  }
+}
+
+/* Primary CTA buttons */
+.stakd-btn-primary {
+  transition: transform 0.15s cubic-bezier(0.34, 1.2, 0.64, 1), box-shadow 0.15s ease, filter 0.15s ease !important;
+}
+@media (hover: hover) {
+  .stakd-btn-primary:not(:disabled):hover {
+    transform: translateY(-1px) scale(1.01) !important;
+    box-shadow: 0 6px 20px rgba(42, 42, 105, 0.35) !important;
+    filter: brightness(1.08) !important;
+  }
+  .stakd-btn-primary:not(:disabled):active {
+    transform: scale(0.97) !important;
+    filter: brightness(0.97) !important;
+  }
+}
+
+/* Footer nav links */
+.stakd-footer-link {
+  transition: color 0.15s ease, opacity 0.15s ease !important;
+  opacity: 0.8;
+}
+.stakd-footer-link:hover {
+  opacity: 1 !important;
+}

@@ -122,6 +122,8 @@ const Landing = () => {
     const { featured: FEATURED } = useProductStore();
     const [email, setEmail] = useState('');
     const [emailSent, setEmailSent] = useState(false);
+    const [emailLoading, setEmailLoading] = useState(false);
+    const [emailError, setEmailError] = useState('');
     const [isMobile, setIsMobile] = useState(window.innerWidth < 640);
     const [isTablet, setIsTablet] = useState(window.innerWidth < 900);
 
@@ -137,7 +139,7 @@ const Landing = () => {
     const heroBg = 'linear-gradient(160deg, #0D0E11 0%, #131525 40%, #1A1C2E 100%)';
 
     return (
-        <div style={{ minHeight: '100vh', background: t.bg, color: t.text }}>
+        <div style={{ minHeight: '100vh', background: t.bg, color: t.text, display: 'flex', flexDirection: 'column' }}>
             <SiteHeader />
 
             {/* ── HERO WRAPPER — single gradient covers text + card strip ── */}
@@ -244,7 +246,7 @@ const Landing = () => {
 
             </div>{/* end hero wrapper */}
 
-            <main style={{ maxWidth: 1180, margin: '0 auto', padding: isMobile ? '0 16px 64px' : '0 24px 100px' }}>
+            <main style={{ flex: 1, maxWidth: 1180, margin: '0 auto', padding: isMobile ? '0 16px 64px' : '0 24px 100px', width: '100%', boxSizing: 'border-box' }}>
 
                 {/* ── CATEGORIES ── */}
                 <section style={{ marginTop: isMobile ? 40 : 64 }}>
@@ -423,8 +425,31 @@ const Landing = () => {
                             You're on the list. We'll be in touch!
                         </div>
                     ) : (
+                        <>
                         <form
-                            onSubmit={e => { e.preventDefault(); if (email) setEmailSent(true); }}
+                            onSubmit={async e => {
+                                e.preventDefault();
+                                if (!email) return;
+                                setEmailLoading(true);
+                                setEmailError('');
+                                try {
+                                    const res = await fetch('/api/subscribe', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ email }),
+                                    });
+                                    if (res.ok) {
+                                        setEmailSent(true);
+                                    } else {
+                                        const data = await res.json().catch(() => ({}));
+                                        setEmailError(data.error || 'Something went wrong. Please try again.');
+                                    }
+                                } catch {
+                                    setEmailError('Network error. Please try again.');
+                                } finally {
+                                    setEmailLoading(false);
+                                }
+                            }}
                             style={{
                                 display: 'flex', gap: 10,
                                 maxWidth: 440, margin: '0 auto',
@@ -444,15 +469,19 @@ const Landing = () => {
                                     fontSize: 14, outline: 'none',
                                 }}
                             />
-                            <button type="submit" style={{
+                            <button type="submit" disabled={emailLoading} className="stakd-btn-primary" style={{
                                 padding: '12px 24px', borderRadius: 8, border: 'none',
                                 background: t.primary, color: '#fff',
-                                fontWeight: 700, fontSize: 14, cursor: 'pointer',
-                                letterSpacing: 0.4,
+                                fontWeight: 700, fontSize: 14, cursor: emailLoading ? 'wait' : 'pointer',
+                                letterSpacing: 0.4, opacity: emailLoading ? 0.7 : 1,
                             }}>
-                                Notify Me
+                                {emailLoading ? 'Saving...' : 'Notify Me'}
                             </button>
                         </form>
+                        {emailError && (
+                            <p style={{ color: '#ef4444', fontSize: 13, marginTop: 8 }}>{emailError}</p>
+                        )}
+                        </>
                     )}
                 </section>
             </main>

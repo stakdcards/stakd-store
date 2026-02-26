@@ -6,6 +6,7 @@ import { useProductStore } from '../contexts/ProductStoreContext';
 import * as ordersService from '../services/orders';
 import * as productsService from '../services/products';
 import * as storageService from '../services/storage';
+import * as emailsService from '../services/emails';
 
 const BRAND_INDIGO = '#2A2A69';
 const MOBILE_BP = 768;
@@ -15,6 +16,7 @@ const TABS = [
     { id: 'listings', label: 'Listings & Availability' },
     { id: 'customers', label: 'Customers' },
     { id: 'orders', label: 'Orders & Fulfillment' },
+    { id: 'emails', label: 'Emails' },
 ];
 
 const ORDER_STATUS_FLOW = ['pending', 'accepted', 'files_generated', 'printed_cut', 'assembled', 'packed', 'shipped'];
@@ -95,6 +97,71 @@ const Admin = () => {
     const addProductImageInputRef = useRef(null);
     const [uploadingImage, setUploadingImage] = useState(false);
 
+    // ── Email tab state ──
+    const [emailLogs, setEmailLogs] = useState([]);
+    const [emailLogsLoading, setEmailLogsLoading] = useState(false);
+    const [subscribers, setSubscribers] = useState([]);
+    const [subscribersLoading, setSubscribersLoading] = useState(false);
+    const [emailSubTab, setEmailSubTab] = useState('sent');
+    const [composeTo, setComposeTo] = useState('');
+    const [composeSubject, setComposeSubject] = useState('');
+    const [composeBody, setComposeBody] = useState('');
+    const [composeSending, setComposeSending] = useState(false);
+    const [composeFeedback, setComposeFeedback] = useState('');
+
+    // ── Label state ──
+    const [labelLoading, setLabelLoading] = useState({});
+
+    const fetchEmailLogs = useCallback(async () => {
+        setEmailLogsLoading(true);
+        try {
+            const logs = await emailsService.fetchEmailLogs();
+            setEmailLogs(logs);
+        } catch (e) {
+            console.error('fetchEmailLogs:', e);
+        } finally {
+            setEmailLogsLoading(false);
+        }
+    }, []);
+
+    const fetchSubscribers = useCallback(async () => {
+        setSubscribersLoading(true);
+        try {
+            const subs = await emailsService.fetchSubscribers();
+            setSubscribers(subs);
+        } catch (e) {
+            console.error('fetchSubscribers:', e);
+        } finally {
+            setSubscribersLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (activeTab === 'emails') {
+            fetchEmailLogs();
+            fetchSubscribers();
+        }
+    }, [activeTab, fetchEmailLogs, fetchSubscribers]);
+
+    const handleGenerateLabel = useCallback(async (order) => {
+        setLabelLoading(prev => ({ ...prev, [order.id]: true }));
+        try {
+            const res = await fetch('/api/create-label', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ orderId: order.id }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Failed to create label');
+            // Refresh orders so label_url + tracking shows
+            await fetchOrders();
+        } catch (err) {
+            alert(`Label error: ${err.message}`);
+        } finally {
+            setLabelLoading(prev => ({ ...prev, [order.id]: false }));
+        }
+    }, [fetchOrders]);
+
     const fetchOrders = useCallback(async () => {
         setOrdersLoading(true);
         try {
@@ -119,6 +186,8 @@ const Admin = () => {
                     status: normalizeOrderStatus(o.status),
                     created_at: o.created_at,
                     order_items: items,
+                    label_url: o.label_url || null,
+                    tracking_number: o.tracking_number || null,
                 };
             });
             setOrders(mapped);
@@ -407,6 +476,246 @@ const Admin = () => {
                         </div>
                     )}
 
+                    {/* ═══════ EMAILS ═══════ */}
+                    {activeTab === 'emails' && (
+                        <div>
+                            {/* Sub-tab bar */}
+                            <div style={{ display: 'flex', gap: 0, borderBottom: `2px solid ${t.border}`, marginBottom: 24 }}>
+                                {[
+                                    { id: 'sent', label: 'Sent Log' },
+                                    { id: 'compose', label: 'Compose' },
+                                    { id: 'subscribers', label: 'Subscribers' },
+                                ].map(sub => (
+                                    <button
+                                        key={sub.id}
+                                        type="button"
+                                        onClick={() => setEmailSubTab(sub.id)}
+                                        style={{
+                                            padding: '10px 20px', background: 'none', border: 'none',
+                                            borderBottom: `3px solid ${emailSubTab === sub.id ? t.primary : 'transparent'}`,
+                                            fontSize: 13, fontWeight: emailSubTab === sub.id ? 700 : 600,
+                                            color: emailSubTab === sub.id ? t.primary : t.textMuted,
+                                            cursor: 'pointer', transition: 'all .15s',
+                                        }}
+                                    >
+                                        {sub.label}
+                                    </button>
+                                ))}
+                            </div>
+
+                            {/* Sent Log */}
+                            {emailSubTab === 'sent' && (
+                                <div style={{ ...sec }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
+                                        <h3 style={st.sectionTitle}>Outgoing Email Log</h3>
+                                        <button type="button" onClick={fetchEmailLogs} disabled={emailLogsLoading} style={{ padding: '7px 14px', borderRadius: 8, border: `1px solid ${t.border}`, fontSize: 12, fontWeight: 600, cursor: 'pointer', background: t.surfaceAlt, color: t.text }}>
+                                            {emailLogsLoading ? 'Loading…' : 'Refresh'}
+                                        </button>
+                                    </div>
+                                    {emailLogs.length === 0 ? (
+                                        <p style={{ color: t.textMuted, fontSize: 14, textAlign: 'center', padding: '32px 0' }}>
+                                            {emailLogsLoading ? 'Loading…' : 'No emails sent yet.'}
+                                        </p>
+                                    ) : (
+                                        <div style={{ overflowX: 'auto' }}>
+                                            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                                <thead>
+                                                    <tr>
+                                                        {['To', 'Subject', 'Type', 'Status', 'Sent'].map(h => (
+                                                            <th key={h} style={{ ...st.th, borderColor: t.border, color: t.textMuted }}>{h}</th>
+                                                        ))}
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {emailLogs.map(log => (
+                                                        <tr key={log.id} style={{ borderBottom: `1px solid ${t.border}` }}>
+                                                            <td style={{ ...st.td, color: t.text }}>{log.to}</td>
+                                                            <td style={{ ...st.td, color: t.textMuted, maxWidth: 240, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{log.subject}</td>
+                                                            <td style={{ ...st.td }}>
+                                                                <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, padding: '2px 8px', borderRadius: 5, background: t.tagBg, color: t.primary }}>
+                                                                    {log.type}
+                                                                </span>
+                                                            </td>
+                                                            <td style={{ ...st.td }}>
+                                                                <span style={{ fontSize: 12, fontWeight: 700, color: log.status === 'sent' ? '#22c55e' : '#ef4444' }}>
+                                                                    {log.status}
+                                                                </span>
+                                                            </td>
+                                                            <td style={{ ...st.td, color: t.textMuted, whiteSpace: 'nowrap' }}>
+                                                                {new Date(log.created_at).toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'short' })}
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Compose */}
+                            {emailSubTab === 'compose' && (
+                                <div style={{ ...sec, maxWidth: 680 }}>
+                                    <h3 style={{ ...st.sectionTitle, marginBottom: 20 }}>Compose Email</h3>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                                        <div>
+                                            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: t.textMuted, marginBottom: 6 }}>
+                                                To (customer email or pick from orders)
+                                            </label>
+                                            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                                                <input
+                                                    type="email"
+                                                    value={composeTo}
+                                                    onChange={e => setComposeTo(e.target.value)}
+                                                    placeholder="customer@example.com"
+                                                    style={{ ...inp(), flex: 1, minWidth: 200 }}
+                                                />
+                                                <select
+                                                    onChange={e => { if (e.target.value) setComposeTo(e.target.value); }}
+                                                    defaultValue=""
+                                                    style={{ ...inp(), flex: 1, minWidth: 160 }}
+                                                >
+                                                    <option value="">Pick a customer…</option>
+                                                    {[...new Map(orders.map(o => [o.email, o])).values()].map(o => (
+                                                        <option key={o.id} value={o.email}>{o.customer} ({o.email})</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: t.textMuted, marginBottom: 6 }}>Subject</label>
+                                            <input
+                                                type="text"
+                                                value={composeSubject}
+                                                onChange={e => setComposeSubject(e.target.value)}
+                                                placeholder="Your order is ready!"
+                                                style={{ ...inp(), width: '100%' }}
+                                            />
+                                        </div>
+                                        <div>
+                                            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: t.textMuted, marginBottom: 6 }}>
+                                                Message (HTML supported)
+                                            </label>
+                                            <textarea
+                                                value={composeBody}
+                                                onChange={e => setComposeBody(e.target.value)}
+                                                placeholder={'<p>Hi there,</p>\n<p>Your order is on its way!</p>'}
+                                                rows={10}
+                                                style={{ ...inp(), width: '100%', resize: 'vertical', fontFamily: 'monospace', fontSize: 13, lineHeight: 1.6 }}
+                                            />
+                                        </div>
+                                        {composeFeedback && (
+                                            <div style={{ fontSize: 13, color: composeFeedback.startsWith('✓') ? '#22c55e' : '#ef4444', fontWeight: 600 }}>
+                                                {composeFeedback}
+                                            </div>
+                                        )}
+                                        <button
+                                            type="button"
+                                            disabled={composeSending || !composeTo || !composeSubject || !composeBody}
+                                            onClick={async () => {
+                                                setComposeSending(true);
+                                                setComposeFeedback('');
+                                                try {
+                                                    const res = await fetch('/api/send-email', {
+                                                        method: 'POST',
+                                                        headers: { 'Content-Type': 'application/json' },
+                                                        body: JSON.stringify({
+                                                            to: composeTo,
+                                                            subject: composeSubject,
+                                                            bodyHtml: composeBody,
+                                                            type: 'reminder',
+                                                        }),
+                                                    });
+                                                    const data = await res.json();
+                                                    if (res.ok) {
+                                                        setComposeFeedback('✓ Email sent successfully.');
+                                                        setComposeTo(''); setComposeSubject(''); setComposeBody('');
+                                                        fetchEmailLogs();
+                                                    } else {
+                                                        setComposeFeedback(`Error: ${data.error || 'Failed to send.'}`);
+                                                    }
+                                                } catch (err) {
+                                                    setComposeFeedback(`Network error: ${err.message}`);
+                                                } finally {
+                                                    setComposeSending(false);
+                                                }
+                                            }}
+                                            style={{ padding: '11px 28px', borderRadius: 8, border: 'none', background: t.primary, color: '#fff', fontWeight: 700, fontSize: 14, cursor: composeSending ? 'wait' : 'pointer', opacity: composeSending ? 0.7 : 1, alignSelf: 'flex-start' }}
+                                        >
+                                            {composeSending ? 'Sending…' : 'Send Email'}
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Subscribers */}
+                            {emailSubTab === 'subscribers' && (
+                                <div style={{ ...sec }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 10 }}>
+                                        <div>
+                                            <h3 style={st.sectionTitle}>Newsletter Subscribers</h3>
+                                            <p style={{ fontSize: 13, color: t.textMuted, margin: 0 }}>{subscribers.filter(s => !s.unsubscribed_at).length} active subscriber{subscribers.filter(s => !s.unsubscribed_at).length !== 1 ? 's' : ''}</p>
+                                        </div>
+                                        <button type="button" onClick={fetchSubscribers} disabled={subscribersLoading} style={{ padding: '7px 14px', borderRadius: 8, border: `1px solid ${t.border}`, fontSize: 12, fontWeight: 600, cursor: 'pointer', background: t.surfaceAlt, color: t.text }}>
+                                            {subscribersLoading ? 'Loading…' : 'Refresh'}
+                                        </button>
+                                    </div>
+                                    {subscribers.length === 0 ? (
+                                        <p style={{ color: t.textMuted, fontSize: 14, textAlign: 'center', padding: '32px 0' }}>
+                                            {subscribersLoading ? 'Loading…' : 'No subscribers yet.'}
+                                        </p>
+                                    ) : (
+                                        <div style={{ overflowX: 'auto' }}>
+                                            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                                                <thead>
+                                                    <tr>
+                                                        {['Email', 'Name', 'Subscribed', 'Status', ''].map(h => (
+                                                            <th key={h} style={{ ...st.th, borderColor: t.border, color: t.textMuted }}>{h}</th>
+                                                        ))}
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {subscribers.map(sub => (
+                                                        <tr key={sub.id} style={{ borderBottom: `1px solid ${t.border}`, opacity: sub.unsubscribed_at ? 0.5 : 1 }}>
+                                                            <td style={{ ...st.td, color: t.text }}>{sub.email}</td>
+                                                            <td style={{ ...st.td, color: t.textMuted }}>{sub.name || '—'}</td>
+                                                            <td style={{ ...st.td, color: t.textMuted, whiteSpace: 'nowrap' }}>
+                                                                {new Date(sub.subscribed_at).toLocaleDateString()}
+                                                            </td>
+                                                            <td style={{ ...st.td }}>
+                                                                <span style={{ fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, padding: '2px 8px', borderRadius: 5, background: sub.unsubscribed_at ? '#ef444418' : '#22c55e18', color: sub.unsubscribed_at ? '#ef4444' : '#22c55e' }}>
+                                                                    {sub.unsubscribed_at ? 'Unsubscribed' : 'Active'}
+                                                                </span>
+                                                            </td>
+                                                            <td style={{ ...st.td }}>
+                                                                {!sub.unsubscribed_at && (
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={async () => {
+                                                                            try {
+                                                                                await emailsService.unsubscribe(sub.id);
+                                                                                setSubscribers(prev => prev.map(s => s.id === sub.id ? { ...s, unsubscribed_at: new Date().toISOString() } : s));
+                                                                            } catch (err) {
+                                                                                alert(`Error: ${err.message}`);
+                                                                            }
+                                                                        }}
+                                                                        style={{ padding: '5px 10px', borderRadius: 6, border: `1px solid ${t.border}`, background: t.surfaceAlt, color: t.textMuted, fontSize: 11, fontWeight: 600, cursor: 'pointer' }}
+                                                                    >
+                                                                        Unsubscribe
+                                                                    </button>
+                                                                )}
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                     {/* ═══════ ORDERS ═══════ */}
                     {activeTab === 'orders' && (
                         <div>
@@ -521,10 +830,33 @@ const Admin = () => {
                                                                 </button>
                                                             );
                                                         })()}
-                                                        {normalizeOrderStatus(selectedOrder.status) === 'assembled' && (
-                                                            <button type="button" onClick={() => alert('Shipping label generation coming soon — hook up your carrier API here.')} style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid #8b5cf6', fontSize: 12, fontWeight: 700, cursor: 'pointer', background: '#8b5cf620', color: '#8b5cf6' }}>
-                                                                Generate Shipping Label
-                                                            </button>
+                                                        {['assembled', 'packed', 'shipped'].includes(normalizeOrderStatus(selectedOrder.status)) && (
+                                                            selectedOrder.label_url ? (
+                                                                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                                                                    <a
+                                                                        href={selectedOrder.label_url}
+                                                                        target="_blank"
+                                                                        rel="noopener noreferrer"
+                                                                        style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid #22c55e', fontSize: 12, fontWeight: 700, background: '#22c55e20', color: '#22c55e', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                                                                    >
+                                                                        Download Label ↗
+                                                                    </a>
+                                                                    {selectedOrder.tracking_number && (
+                                                                        <span style={{ fontSize: 12, color: '#9ca3af', fontFamily: 'monospace' }}>
+                                                                            Tracking: {selectedOrder.tracking_number}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            ) : (
+                                                                <button
+                                                                    type="button"
+                                                                    disabled={!!labelLoading[selectedOrder.id]}
+                                                                    onClick={() => handleGenerateLabel(selectedOrder)}
+                                                                    style={{ padding: '8px 14px', borderRadius: 8, border: '1px solid #8b5cf6', fontSize: 12, fontWeight: 700, cursor: labelLoading[selectedOrder.id] ? 'wait' : 'pointer', background: '#8b5cf620', color: '#8b5cf6', opacity: labelLoading[selectedOrder.id] ? 0.7 : 1 }}
+                                                                >
+                                                                    {labelLoading[selectedOrder.id] ? 'Generating…' : 'Generate Shipping Label'}
+                                                                </button>
+                                                            )
                                                         )}
                                                     </div>
                                                 </div>

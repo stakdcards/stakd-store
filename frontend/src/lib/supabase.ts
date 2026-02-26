@@ -43,6 +43,9 @@ export type OrderRow = {
   subtotal: number;
   tax: number;
   total: number;
+  label_url: string | null;
+  tracking_number: string | null;
+  label_created_at: string | null;
   created_at: string;
   updated_at: string;
 };

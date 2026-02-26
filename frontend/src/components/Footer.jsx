@@ -70,11 +70,10 @@ const Footer = () => {
                 />
                 <div style={{ display: 'flex', gap: isMobile ? 20 : 24, flexWrap: 'wrap', justifyContent: 'center' }}>
                     {NAV_LINKS.map(l => (
-                        <Link key={l.to} to={l.to} style={{ fontSize: 13, color: t.textMuted, textDecoration: 'none', fontWeight: 600 }}>
+                        <Link key={l.to} to={l.to} className="stakd-footer-link" style={{ fontSize: 13, color: t.textMuted, textDecoration: 'none', fontWeight: 600 }}>
                             {l.label}
                         </Link>
                     ))}
-                    <Link to="/admin" style={{ fontSize: 11, color: t.textFaint, textDecoration: 'none' }}>Admin</Link>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: isMobile ? 'center' : 'flex-end', gap: 10 }}>
                     <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
@@ -85,7 +84,8 @@ const Footer = () => {
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 aria-label={s.label}
-                                style={{ color: t.textMuted, transition: 'color .2s' }}
+                                className="stakd-social-icon"
+                                style={{ color: t.textMuted, display: 'flex', alignItems: 'center' }}
                                 onMouseEnter={e => { e.currentTarget.style.color = t.primary; }}
                                 onMouseLeave={e => { e.currentTarget.style.color = t.textMuted; }}
                             >

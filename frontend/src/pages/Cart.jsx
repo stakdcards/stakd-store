@@ -227,7 +227,8 @@ const Cart = () => {
         <div style={{ minHeight: '100vh', background: t.bg, display: 'flex', flexDirection: 'column' }}>
             <SiteHeader />
 
-            <div style={{ maxWidth: 1100, margin: '0 auto', padding: isMobile ? '20px 16px 60px' : 'clamp(24px, 4vw, 48px) 24px 80px' }}>
+            <main style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+            <div style={{ flex: 1, maxWidth: 1100, margin: '0 auto', padding: isMobile ? '20px 16px 60px' : 'clamp(24px, 4vw, 48px) 24px 80px', width: '100%', boxSizing: 'border-box' }}>
                 <div style={{ marginBottom: isMobile ? 20 : 28 }}>
                     <h1 style={{
                         fontFamily: "'Big Shoulders Display', 'Bebas Neue', sans-serif",
@@ -377,6 +378,7 @@ const Cart = () => {
                     </div>
                 </div>
             </div>
+            </main>
             <Footer />
         </div>
     );

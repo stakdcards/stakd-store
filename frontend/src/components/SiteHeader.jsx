@@ -43,7 +43,8 @@ const CloseIcon = () => (
 const SiteHeader = () => {
     const { t } = useDarkMode();
     const { cartCount } = useCart();
-    const { user } = useAuth();
+    const { user, profile } = useAuth();
+    const firstName = profile?.name?.split(/\s+/)[0] || user?.user_metadata?.full_name?.split(/\s+/)[0] || user?.user_metadata?.name?.split(/\s+/)[0] || null;
     const location = useLocation();
     const [menuOpen, setMenuOpen] = useState(false);
     const [scrolled, setScrolled] = useState(false);
@@ -117,20 +118,33 @@ const SiteHeader = () => {
                 )}
 
                 {/* Right controls */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 2 : 4, marginLeft: 'auto', justifyContent: 'flex-end' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 2 : 8, marginLeft: 'auto', justifyContent: 'flex-end' }}>
                     <NavLink to={user ? '/account' : '/login'} style={({ isActive }) => ({
-                        ...iconBtn,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 8,
                         position: 'relative',
                         color: isActive ? t.primary : t.textMuted,
                         textDecoration: 'none',
+                        padding: '6px 10px',
+                        borderRadius: 8,
+                        minHeight: 36,
+                        boxSizing: 'border-box',
                     })} title={user ? 'My Account' : 'Sign In'}>
-                        <AccountIcon />
-                        {user && (
-                            <span style={{
-                                position: 'absolute', top: 4, right: 4,
-                                width: 7, height: 7, borderRadius: '50%',
-                                background: '#22c55e', border: `1.5px solid ${t.bg}`,
-                            }} />
+                        <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <AccountIcon />
+                            {user && (
+                                <span style={{
+                                    position: 'absolute', top: 4, right: 4,
+                                    width: 7, height: 7, borderRadius: '50%',
+                                    background: '#22c55e', border: `1.5px solid ${t.bg}`,
+                                }} />
+                            )}
+                        </span>
+                        {user && firstName && !isMobile && (
+                            <span style={{ fontSize: 13, fontWeight: 600, color: 'inherit', maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                {firstName}
+                            </span>
                         )}
                     </NavLink>
                     <NavLink to="/cart" style={({ isActive }) => ({

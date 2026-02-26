@@ -18,11 +18,15 @@ export async function POST(request) {
   }
 
   const testSecret = process.env.STRIPE_WEBHOOK_SECRET_TEST;
-  const liveSecret = process.env.STRIPE_WEBHOOK_SECRET || process.env.STRIPE_WEBHOOK_SECRET_LIVE;
+  const liveSecret =
+    process.env.STRIPE_WEBHOOK_SECRET ||
+    process.env.STRIPE_WEBHOOK_SECRET_LIVE;
   const secrets = [testSecret, liveSecret].filter(Boolean);
   if (secrets.length === 0) {
-    console.error('No webhook secret set (STRIPE_WEBHOOK_SECRET or STRIPE_WEBHOOK_SECRET_TEST)');
-    return jsonResponse({ error: 'Webhook secret not configured' }, 500);
+    const msg =
+      'Set STRIPE_WEBHOOK_SECRET (or STRIPE_WEBHOOK_SECRET_TEST for test mode) in your environment. On Vercel: Project → Settings → Environment Variables.';
+    console.error(msg);
+    return jsonResponse({ error: 'Webhook secret not configured', hint: msg }, 500);
   }
 
   let event;

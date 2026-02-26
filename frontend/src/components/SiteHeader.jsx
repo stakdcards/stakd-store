@@ -136,7 +136,10 @@ const SiteHeader = () => {
                                 {firstName}
                             </span>
                         )}
-                        <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
+                        <span style={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            position: 'relative', width: 36, height: 36, flexShrink: 0,
+                        }}>
                             <AccountIcon />
                             {user && (
                                 <span style={{

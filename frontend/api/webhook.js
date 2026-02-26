@@ -1,48 +1,37 @@
 import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
 
-export const config = {
-  api: { bodyParser: false },
-};
-
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
-function getRawBody(req) {
-  return new Promise((resolve, reject) => {
-    const chunks = [];
-    req.on('data', (chunk) => chunks.push(chunk));
-    req.on('end', () => resolve(Buffer.concat(chunks)));
-    req.on('error', reject);
+function jsonResponse(body, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { 'Content-Type': 'application/json' },
   });
 }
 
-export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    res.setHeader('Allow', 'POST');
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-
+export async function POST(request) {
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
   if (!webhookSecret) {
     console.error('STRIPE_WEBHOOK_SECRET is not set');
-    return res.status(500).json({ error: 'Webhook secret not configured' });
+    return jsonResponse({ error: 'Webhook secret not configured' }, 500);
   }
 
   let event;
   try {
-    const rawBody = await getRawBody(req);
-    const sig = req.headers['stripe-signature'];
+    const rawBody = await request.text();
+    const sig = request.headers.get('stripe-signature');
     if (!sig) {
-      return res.status(400).json({ error: 'Missing stripe-signature header' });
+      return jsonResponse({ error: 'Missing stripe-signature header' }, 400);
     }
     event = stripe.webhooks.constructEvent(rawBody, sig, webhookSecret);
   } catch (err) {
     console.error('Webhook signature verification failed:', err.message);
-    return res.status(400).json({ error: `Webhook Error: ${err.message}` });
+    return jsonResponse({ error: `Webhook Error: ${err.message}` }, 400);
   }
 
   if (event.type !== 'checkout.session.completed') {
-    return res.status(200).json({ received: true });
+    return jsonResponse({ received: true });
   }
 
   const session = event.data.object;
@@ -50,7 +39,7 @@ export default async function handler(req, res) {
   const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!supabaseUrl || !supabaseServiceKey) {
     console.error('VITE_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY is not set');
-    return res.status(500).json({ error: 'Supabase not configured' });
+    return jsonResponse({ error: 'Supabase not configured' }, 500);
   }
 
   const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -60,7 +49,7 @@ export default async function handler(req, res) {
     const cartItemsJson = metadata.cart_items;
     if (!cartItemsJson) {
       console.error('No cart_items in session metadata');
-      return res.status(400).json({ error: 'Missing cart_items in metadata' });
+      return jsonResponse({ error: 'Missing cart_items in metadata' }, 400);
     }
 
     let cartItems;
@@ -68,12 +57,12 @@ export default async function handler(req, res) {
       cartItems = JSON.parse(cartItemsJson);
     } catch (e) {
       console.error('Invalid cart_items JSON:', e);
-      return res.status(400).json({ error: 'Invalid cart_items in metadata' });
+      return jsonResponse({ error: 'Invalid cart_items in metadata' }, 400);
     }
 
     if (!Array.isArray(cartItems) || cartItems.length === 0) {
       console.error('cart_items is empty');
-      return res.status(400).json({ error: 'Empty cart_items' });
+      return jsonResponse({ error: 'Empty cart_items' }, 400);
     }
 
     const details = session.customer_details || {};
@@ -116,7 +105,7 @@ export default async function handler(req, res) {
 
     if (orderError) {
       console.error('Order insert error:', orderError);
-      return res.status(500).json({ error: orderError.message });
+      return jsonResponse({ error: orderError.message }, 500);
     }
 
     const orderId = orderData.id;
@@ -130,12 +119,12 @@ export default async function handler(req, res) {
     const { error: itemsError } = await supabase.from('order_items').insert(orderItemRows);
     if (itemsError) {
       console.error('Order items insert error:', itemsError);
-      return res.status(500).json({ error: itemsError.message });
+      return jsonResponse({ error: itemsError.message }, 500);
     }
 
-    return res.status(200).json({ received: true, order_id: orderId });
+    return jsonResponse({ received: true, order_id: orderId });
   } catch (err) {
     console.error('Webhook handler error:', err);
-    return res.status(500).json({ error: err.message });
+    return jsonResponse({ error: err.message }, 500);
   }
 }

@@ -112,56 +112,6 @@ const Admin = () => {
     // ── Label state ──
     const [labelLoading, setLabelLoading] = useState({});
 
-    const fetchEmailLogs = useCallback(async () => {
-        setEmailLogsLoading(true);
-        try {
-            const logs = await emailsService.fetchEmailLogs();
-            setEmailLogs(logs);
-        } catch (e) {
-            console.error('fetchEmailLogs:', e);
-        } finally {
-            setEmailLogsLoading(false);
-        }
-    }, []);
-
-    const fetchSubscribers = useCallback(async () => {
-        setSubscribersLoading(true);
-        try {
-            const subs = await emailsService.fetchSubscribers();
-            setSubscribers(subs);
-        } catch (e) {
-            console.error('fetchSubscribers:', e);
-        } finally {
-            setSubscribersLoading(false);
-        }
-    }, []);
-
-    useEffect(() => {
-        if (activeTab === 'emails') {
-            fetchEmailLogs();
-            fetchSubscribers();
-        }
-    }, [activeTab, fetchEmailLogs, fetchSubscribers]);
-
-    const handleGenerateLabel = useCallback(async (order) => {
-        setLabelLoading(prev => ({ ...prev, [order.id]: true }));
-        try {
-            const res = await fetch('/api/create-label', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ orderId: order.id }),
-            });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error || 'Failed to create label');
-            // Refresh orders so label_url + tracking shows
-            await fetchOrders();
-        } catch (err) {
-            alert(`Label error: ${err.message}`);
-        } finally {
-            setLabelLoading(prev => ({ ...prev, [order.id]: false }));
-        }
-    }, [fetchOrders]);
-
     const fetchOrders = useCallback(async () => {
         setOrdersLoading(true);
         try {
@@ -202,6 +152,55 @@ const Admin = () => {
     useEffect(() => {
         fetchOrders();
     }, [fetchOrders]);
+
+    const fetchEmailLogs = useCallback(async () => {
+        setEmailLogsLoading(true);
+        try {
+            const logs = await emailsService.fetchEmailLogs();
+            setEmailLogs(logs);
+        } catch (e) {
+            console.error('fetchEmailLogs:', e);
+        } finally {
+            setEmailLogsLoading(false);
+        }
+    }, []);
+
+    const fetchSubscribers = useCallback(async () => {
+        setSubscribersLoading(true);
+        try {
+            const subs = await emailsService.fetchSubscribers();
+            setSubscribers(subs);
+        } catch (e) {
+            console.error('fetchSubscribers:', e);
+        } finally {
+            setSubscribersLoading(false);
+        }
+    }, []);
+
+    const handleGenerateLabel = useCallback(async (order) => {
+        setLabelLoading(prev => ({ ...prev, [order.id]: true }));
+        try {
+            const res = await fetch('/api/create-label', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ orderId: order.id }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Failed to create label');
+            await fetchOrders();
+        } catch (err) {
+            alert(`Label error: ${err.message}`);
+        } finally {
+            setLabelLoading(prev => ({ ...prev, [order.id]: false }));
+        }
+    }, [fetchOrders]);
+
+    useEffect(() => {
+        if (activeTab === 'emails') {
+            fetchEmailLogs();
+            fetchSubscribers();
+        }
+    }, [activeTab, fetchEmailLogs, fetchSubscribers]);
 
     const [isMobile, setIsMobile] = useState(typeof window !== 'undefined' && window.innerWidth < MOBILE_BP);
 

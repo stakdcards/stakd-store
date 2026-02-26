@@ -28,6 +28,9 @@ function ProductCard({ product }) {
     const { addToCart, isInCart } = useCart();
     const inCart = isInCart(product.id);
     const isMobile = window.innerWidth < 640;
+    const firstImageUrl = (product.images && product.images.length > 0 && (product.images[0].url || product.images[0].dataUrl))
+        ? (product.images[0].url || product.images[0].dataUrl)
+        : null;
 
     return (
         <article className="stakd-card" style={{
@@ -36,7 +39,13 @@ function ProductCard({ product }) {
             display: 'flex', flexDirection: 'column',
         }}>
             <Link to={`?id=${product.id}`} style={{ display: 'block', textDecoration: 'none' }}>
-                <ShadowboxPreview product={product} />
+                {firstImageUrl ? (
+                    <div style={{ aspectRatio: '3/4', overflow: 'hidden', background: t.surfaceAlt }}>
+                        <img src={firstImageUrl} alt={product.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    </div>
+                ) : (
+                    <ShadowboxPreview product={product} />
+                )}
             </Link>
             <div style={{ padding: isMobile ? 10 : 14, flex: 1, display: 'flex', flexDirection: 'column', gap: isMobile ? 8 : 10 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: 6, alignItems: 'flex-start' }}>

@@ -119,11 +119,14 @@ const SiteHeader = () => {
                             padding: '7px 16px', borderRadius: 8, fontSize: 14, fontWeight: 600, letterSpacing: 0.3,
                             textDecoration: 'none', color: isActive ? t.primary : t.textMuted, background: 'transparent', transition: 'color .2s',
                         })}>Gallery</NavLink>
-                        <div style={{ position: 'relative' }}>
+                        <div
+                            style={{ position: 'relative' }}
+                            onMouseEnter={() => setAboutOpen(true)}
+                            onMouseLeave={() => setAboutOpen(false)}
+                        >
                             <button
                                 type="button"
                                 onClick={() => setAboutOpen(o => !o)}
-                                onBlur={() => setTimeout(() => setAboutOpen(false), 150)}
                                 style={{
                                     padding: '7px 16px', borderRadius: 8, fontSize: 14, fontWeight: 600, letterSpacing: 0.3,
                                     border: 'none', background: 'transparent', cursor: 'pointer',
